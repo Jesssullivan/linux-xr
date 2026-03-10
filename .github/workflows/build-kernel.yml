@@ -50,10 +50,35 @@ jobs:
           sudo apt-get install -y \
             gcc make libelf-dev libssl-dev openssl \
             bc bison flex rsync rpm dwarves kmod \
-            curl xz-utils patch tar gzip cpio
+            curl xz-utils patch tar gzip cpio ccache
 
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-
+            ccache-${{ steps.version.outputs.kversion }}-
+
+      - name: Restore kernel sources
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/rpmbuild/SOURCES/linux-*.tar.xz
+            ~/rpmbuild/SOURCES/patch-*-rt*.patch
+          key: sources-${{ steps.version.outputs.kversion }}-${{ steps.version.outputs.rt_version }}
+
+      - name: Configure ccache
+        run: |
+          ccache --max-size=4G
+          ccache --set-config=compression=true
+          ccache --set-config=compression_level=6
+          ccache -z
+          echo "CC=ccache gcc" >> "$GITHUB_ENV"
 
       - name: Build RPMs
         run: |
@@ -66,6 +91,10 @@ jobs:
             --kernel-version "${{ steps.version.outputs.kversion }}" \
             --xr-release "${{ steps.version.outputs.xr_release }}" \
             ${RT_FLAG}
+
+      - name: Show ccache stats
+        if: always()
+        run: ccache -s
 
       - name: Upload RPM artifacts
         uses: actions/upload-artifact@v4

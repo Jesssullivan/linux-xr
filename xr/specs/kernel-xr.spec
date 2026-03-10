@@ -113,7 +113,7 @@ echo "${KREL}" > .kernel-release
 
 %build
 KREL=$(cat .kernel-release)
-make -j$(nproc) bzImage modules
+make %{?_cc:CC="%{_cc}"} -j$(nproc) bzImage modules
 
 %install
 KREL=$(cat .kernel-release)

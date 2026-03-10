@@ -137,6 +137,12 @@ if [[ -n "${RT_VERSION}" ]]; then
     DEFINES+=(--define "rt_version ${RT_VERSION}")
 fi
 
+# Pass CC through for ccache support
+if [[ -n "${CC:-}" ]]; then
+    DEFINES+=(--define "_cc ${CC}")
+    echo ">>> Using CC=${CC}"
+fi
+
 rpmbuild -bb --nodeps "${DEFINES[@]}" "${RPMBUILD}/SPECS/kernel-xr.spec"
 
 # --- Step 8: Report ---
