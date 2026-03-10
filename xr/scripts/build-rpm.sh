@@ -122,15 +122,15 @@ fi
 # --- Step 5: Copy spec ---
 cp "${XR_DIR}/specs/kernel-xr.spec" "${RPMBUILD}/SPECS/"
 
-# --- Step 6: Dry-run patches ---
-echo ">>> Extracting tarball for patch dry-run..."
+# --- Step 6: Test patches (cumulative apply in temp dir) ---
+echo ">>> Extracting tarball for patch test..."
 BUILDDIR=$(mktemp -d)
 tar -xf "${RPMBUILD}/SOURCES/${TARBALL}" -C "${BUILDDIR}" --strip-components=0
 SRCDIR="${BUILDDIR}/linux-${KERNEL_VERSION}"
 
 if [[ -n "${RT_VERSION}" ]]; then
-    echo ">>> Dry-run: RT patch..."
-    patch -p1 --dry-run -d "${SRCDIR}" < "${RPMBUILD}/SOURCES/patch-${RT_VERSION}.patch" || {
+    echo ">>> Applying (test): RT patch..."
+    patch -p1 -d "${SRCDIR}" < "${RPMBUILD}/SOURCES/patch-${RT_VERSION}.patch" || {
         echo "ERROR: RT patch does not apply cleanly."
         rm -rf "${BUILDDIR}"
         exit 1
@@ -138,8 +138,8 @@ if [[ -n "${RT_VERSION}" ]]; then
 fi
 
 for patch in "${PATCHES[@]}"; do
-    echo ">>> Dry-run: ${patch}..."
-    patch -p1 --dry-run -d "${SRCDIR}" < "${RPMBUILD}/SOURCES/${patch}" || {
+    echo ">>> Applying (test): ${patch}..."
+    patch -p1 --fuzz=3 -d "${SRCDIR}" < "${RPMBUILD}/SOURCES/${patch}" || {
         echo "ERROR: ${patch} does not apply cleanly."
         rm -rf "${BUILDDIR}"
         exit 1

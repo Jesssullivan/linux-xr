@@ -77,10 +77,10 @@ patch -p1 < %{_sourcedir}/patch-%{rt_version}.patch
 %endif
 
 # CachyOS combined: VESA DSC BPP parser + QP tables + RC offsets + amdgpu_dm
-%patch0 -p1
+%patch -P0 -p1
 
-# EDID non-desktop quirk for Beyond
-%patch1 -p1
+# EDID non-desktop quirk for Beyond (fuzz needed: context shifted by DSC patch)
+%patch -P1 -p1 --fuzz=3
 
 # Apply base config from honey server
 cp %{SOURCE1} .config
