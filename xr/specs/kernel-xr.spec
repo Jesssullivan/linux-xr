@@ -80,7 +80,7 @@ patch -p1 < %{_sourcedir}/patch-%{rt_version}.patch
 %patch -P0 -p1
 
 # EDID non-desktop quirk for Beyond (fuzz needed: context shifted by DSC patch)
-%patch -P1 -p1 --fuzz=3
+patch -p1 --fuzz=3 < %{_sourcedir}/bigscreen-beyond-edid.patch
 
 # Apply base config from honey server
 cp %{SOURCE1} .config
