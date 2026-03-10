@@ -39,6 +39,7 @@ BuildRequires:  flex
 BuildRequires:  rsync
 BuildRequires:  rpm-build
 BuildRequires:  dwarves
+BuildRequires:  kmod
 
 Provides:       kernel = %{kversion}-%{krelease}
 Conflicts:      kernel-xr < %{kversion}-%{krelease}
@@ -105,10 +106,17 @@ scripts/config --disable CONFIG_PREEMPT_NONE
 
 make olddefconfig
 
+# Capture the actual kernel release string (includes -rt1 if RT patched)
+KREL=$(make -s kernelrelease)
+echo "Kernel release: ${KREL}"
+echo "${KREL}" > .kernel-release
+
 %build
+KREL=$(cat .kernel-release)
 make -j$(nproc) bzImage modules
 
 %install
+KREL=$(cat .kernel-release)
 mkdir -p %{buildroot}/boot
 mkdir -p %{buildroot}/lib/modules
 
@@ -116,24 +124,27 @@ make INSTALL_MOD_PATH=%{buildroot} modules_install
 make INSTALL_PATH=%{buildroot}/boot install
 
 # Install vmlinux for devel
-mkdir -p %{buildroot}/usr/src/kernels/%{kversion}-%{krelease}
+mkdir -p %{buildroot}/usr/src/kernels/${KREL}
 cp -a .config Module.symvers System.map Makefile \
-    %{buildroot}/usr/src/kernels/%{kversion}-%{krelease}/
+    %{buildroot}/usr/src/kernels/${KREL}/
 cp -a include scripts arch/x86/include \
-    %{buildroot}/usr/src/kernels/%{kversion}-%{krelease}/
+    %{buildroot}/usr/src/kernels/${KREL}/
 
 # Headers
 make INSTALL_HDR_PATH=%{buildroot}/usr headers_install
 
 # Remove build/source symlinks (point to builddir)
-rm -f %{buildroot}/lib/modules/%{kversion}-%{krelease}/build
-rm -f %{buildroot}/lib/modules/%{kversion}-%{krelease}/source
-ln -sf /usr/src/kernels/%{kversion}-%{krelease} \
-    %{buildroot}/lib/modules/%{kversion}-%{krelease}/build
+rm -f %{buildroot}/lib/modules/${KREL}/build
+rm -f %{buildroot}/lib/modules/${KREL}/source
+ln -sf /usr/src/kernels/${KREL} \
+    %{buildroot}/lib/modules/${KREL}/build
 
 %post
-depmod -a %{kversion}-%{krelease}
-grubby --set-default /boot/vmlinuz-%{kversion}-%{krelease} || true
+KREL=%{kversion}-%{krelease}
+# Find the actual installed kernel version (may include -rt suffix)
+ACTUAL_KREL=$(ls /lib/modules/ | grep "%{kversion}.*%{krelease}" | head -1)
+depmod -a ${ACTUAL_KREL:-${KREL}}
+grubby --set-default /boot/vmlinuz-${ACTUAL_KREL:-${KREL}} || true
 
 %postun
 if [ $1 -eq 0 ]; then
@@ -141,13 +152,11 @@ if [ $1 -eq 0 ]; then
 fi
 
 %files
-/boot/vmlinuz-%{kversion}-%{krelease}
-/boot/System.map-%{kversion}-%{krelease}
-/boot/config-%{kversion}-%{krelease}
-/lib/modules/%{kversion}-%{krelease}/
+/boot/*%{kversion}*%{krelease}*
+/lib/modules/*%{kversion}*%{krelease}*/
 
 %files devel
-/usr/src/kernels/%{kversion}-%{krelease}/
+/usr/src/kernels/*%{kversion}*%{krelease}*/
 
 %files headers
 /usr/include/*

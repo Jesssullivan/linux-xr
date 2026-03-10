@@ -24,7 +24,7 @@ jobs:
     runs-on: linux-xr-docker
     container:
       image: rockylinux/rockylinux:10
-    timeout-minutes: 120
+    timeout-minutes: 180
 
     steps:
       - name: Parse version from tag
@@ -51,7 +51,7 @@ jobs:
           dnf install -y \
             gcc make elfutils-libelf-devel openssl-devel openssl \
             perl-interpreter bc bison flex rsync rpm-build \
-            dwarves curl xz patch tar gzip
+            dwarves kmod curl xz patch tar gzip
 
       - name: Checkout
         uses: actions/checkout@v4
