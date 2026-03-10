@@ -22,7 +22,7 @@ on:
 jobs:
   build-rpm:
     runs-on: linux-xr-docker
-    timeout-minutes: 180
+    timeout-minutes: 300
 
     steps:
       - name: Parse version from tag

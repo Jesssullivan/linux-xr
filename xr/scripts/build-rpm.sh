@@ -122,32 +122,9 @@ fi
 # --- Step 5: Copy spec ---
 cp "${XR_DIR}/specs/kernel-xr.spec" "${RPMBUILD}/SPECS/"
 
-# --- Step 6: Test patches (cumulative apply in temp dir) ---
-echo ">>> Extracting tarball for patch test..."
-BUILDDIR=$(mktemp -d)
-tar -xf "${RPMBUILD}/SOURCES/${TARBALL}" -C "${BUILDDIR}" --strip-components=0
-SRCDIR="${BUILDDIR}/linux-${KERNEL_VERSION}"
-
-if [[ -n "${RT_VERSION}" ]]; then
-    echo ">>> Applying (test): RT patch..."
-    patch -p1 -d "${SRCDIR}" < "${RPMBUILD}/SOURCES/patch-${RT_VERSION}.patch" || {
-        echo "ERROR: RT patch does not apply cleanly."
-        rm -rf "${BUILDDIR}"
-        exit 1
-    }
-fi
-
-for patch in "${PATCHES[@]}"; do
-    echo ">>> Applying (test): ${patch}..."
-    patch -p1 --fuzz=3 -d "${SRCDIR}" < "${RPMBUILD}/SOURCES/${patch}" || {
-        echo "ERROR: ${patch} does not apply cleanly."
-        rm -rf "${BUILDDIR}"
-        exit 1
-    }
-done
-
-rm -rf "${BUILDDIR}"
-echo ">>> All patches apply cleanly."
+# --- Step 6: Skip separate patch test (rpmbuild applies patches in %prep) ---
+echo ">>> Skipping separate patch test (rpmbuild handles patch application)."
+echo ">>> If patches fail to apply, rpmbuild will exit with an error."
 
 # --- Step 7: Build RPMs ---
 echo ">>> Building RPMs..."
