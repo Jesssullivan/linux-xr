@@ -22,8 +22,6 @@ on:
 jobs:
   build-rpm:
     runs-on: linux-xr-docker
-    container:
-      image: rockylinux/rockylinux:10
     timeout-minutes: 180
 
     steps:
@@ -48,10 +46,11 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          dnf install -y \
-            gcc make elfutils-libelf-devel openssl-devel openssl \
-            perl-interpreter bc bison flex rsync rpm-build \
-            dwarves kmod curl xz patch tar gzip
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc make libelf-dev libssl-dev openssl \
+            bc bison flex rsync rpm dwarves kmod \
+            curl xz-utils patch tar gzip cpio
 
       - name: Checkout
         uses: actions/checkout@v4
