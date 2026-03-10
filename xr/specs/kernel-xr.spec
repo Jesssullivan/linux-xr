@@ -31,6 +31,7 @@ BuildRequires:  gcc
 BuildRequires:  make
 BuildRequires:  elfutils-libelf-devel
 BuildRequires:  openssl-devel
+BuildRequires:  openssl
 BuildRequires:  perl-interpreter
 BuildRequires:  bc
 BuildRequires:  bison
