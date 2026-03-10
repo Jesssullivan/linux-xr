@@ -8,10 +8,10 @@
 #
 # The build-rpm.sh script handles source/patch fetching and calls this.
 
-%define kversion  %{?kversion}%{!?kversion:6.19.5}
-%define xr_release %{?xr_release}%{!?xr_release:1}
-%define krelease  %{xr_release}.xr.el10
-%define rt_version %{?rt_version}%{!?rt_version:%{nil}}
+%{!?kversion: %global kversion 6.19.5}
+%{!?xr_release: %global xr_release 1}
+%global krelease  %{xr_release}.xr.el10
+%{!?rt_version: %global rt_version %{nil}}
 
 Name:           kernel-xr
 Version:        %{kversion}
