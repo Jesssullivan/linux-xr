@@ -160,7 +160,7 @@ if [[ -n "${RT_VERSION}" ]]; then
     DEFINES+=(--define "rt_version ${RT_VERSION}")
 fi
 
-rpmbuild -bb "${DEFINES[@]}" "${RPMBUILD}/SPECS/kernel-xr.spec"
+rpmbuild -bb --nodeps "${DEFINES[@]}" "${RPMBUILD}/SPECS/kernel-xr.spec"
 
 # --- Step 8: Report ---
 echo ""
