@@ -113,7 +113,11 @@ echo "${KREL}" > .kernel-release
 
 %build
 KREL=$(cat .kernel-release)
-make %{?_cc:CC="%{_cc}"} -j$(nproc) bzImage modules
+# Cap parallelism: containers report host nproc, not cgroup CPU limit.
+# Kernel compilation uses ~1GB per gcc job; limit to avoid OOM on CI runners.
+JOBS=$(nproc 2>/dev/null || echo 2)
+[ "$JOBS" -gt 4 ] && JOBS=4
+make %{?_cc:CC="%{_cc}"} -j${JOBS} V=0 bzImage modules
 
 %install
 KREL=$(cat .kernel-release)
