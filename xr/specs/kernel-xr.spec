@@ -104,6 +104,13 @@ scripts/config --disable CONFIG_PREEMPT_VOLUNTARY
 scripts/config --disable CONFIG_PREEMPT_NONE
 %endif
 
+# Disable debug info to reduce link-time memory usage (~8GB -> ~2GB for vmlinux)
+# Debug info not needed for XR kernel — we're not debugging the kernel itself
+scripts/config --disable CONFIG_DEBUG_INFO
+scripts/config --disable CONFIG_DEBUG_INFO_DWARF5
+scripts/config --disable CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
+scripts/config --enable CONFIG_DEBUG_INFO_NONE
+
 make olddefconfig
 
 # Capture the actual kernel release string (includes -rt1 if RT patched)
