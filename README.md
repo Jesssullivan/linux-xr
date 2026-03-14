@@ -2,6 +2,10 @@
 
 XR-optimized kernel builds for Bigscreen Beyond 2e on AMD GPUs (Rocky Linux 10).
 
+Builds are run on tinyland-inc/GloriousFlywheel infrastructure, including machines running kernel built from this tree.
+
+
+
 Fork of `torvalds/linux` with CI-built RPMs carrying VR/XR patches.
 
 ## What's patched
@@ -12,8 +16,9 @@ Fork of `torvalds/linux` with CI-built RPMs carrying VR/XR patches.
 | `bigscreen-beyond-edid.patch` | EDID non-desktop quirk for Beyond (BIG/0x1234) |
 | `patch-6.19.3-rt1.patch` | PREEMPT_RT real-time scheduling (optional) |
 
-Patches are maintained in [XoxdWM/patches](https://github.com/Jesssullivan/XoxdWM/tree/main/patches)
-and fetched at build time — not committed here.
+Patches are maintained in the Tinyland.inc Gitlab instance for the time being (ideally not for much longer 🚧) and [XoxdWM/patches](https://github.com/Jesssullivan/XoxdWM/tree/main/patches) which get fetched at build time — not always committed here. 
+
+RT opinions come primarily from very large AD/DA and related busses used for sensors on BCI server (~100:100 channels of carefully clocked I/O; uses externall C777 sample wordclock) 
 
 ## Install
 
