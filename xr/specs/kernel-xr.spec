@@ -99,6 +99,24 @@ scripts/config --enable CONFIG_USB_HIDDEV
 scripts/config --enable CONFIG_USB_VIDEO_CLASS
 scripts/config --set-str CONFIG_LOCALVERSION "-%{krelease}"
 
+# SMI mitigation config (from Dell T7810 BIOS RE analysis)
+# These ensure the kernel ships tools for characterizing and mitigating
+# SMI-induced latency on C610/Wellsburg PCH systems.
+scripts/config --enable CONFIG_HWLAT_TRACER
+scripts/config --enable CONFIG_TRACER_SNAPSHOT
+scripts/config --enable CONFIG_X86_MSR
+scripts/config --module CONFIG_DELL_RBU
+scripts/config --disable CONFIG_ITCO_WDT
+
+# BCI workload support (CPU isolation, high-res timers)
+scripts/config --enable CONFIG_CPU_ISOLATION
+scripts/config --enable CONFIG_NO_HZ_FULL
+scripts/config --enable CONFIG_HIGH_RES_TIMERS
+scripts/config --enable CONFIG_RCU_NOCB_CPU
+scripts/config --enable CONFIG_IRQ_FORCED_THREADING
+scripts/config --enable CONFIG_UIO
+scripts/config --enable CONFIG_UIO_PCI_GENERIC
+
 # RT-specific config
 %if "%{rt_version}" != ""
 scripts/config --enable CONFIG_PREEMPT_RT
@@ -158,6 +176,19 @@ KREL=%{kversion}-%{krelease}
 ACTUAL_KREL=$(ls /lib/modules/ | grep "%{kversion}.*%{krelease}" | head -1)
 depmod -a ${ACTUAL_KREL:-${KREL}}
 grubby --set-default /boot/vmlinuz-${ACTUAL_KREL:-${KREL}} || true
+
+# Apply hardware-invariant SMI mitigation boot params (from Dell T7810 BIOS RE)
+# Topology-dependent params (isolcpus, nohz_full) are left to the tuned profile.
+grubby --update-kernel=/boot/vmlinuz-${ACTUAL_KREL:-${KREL}} \
+  --args="tsc=nowatchdog clocksource=tsc nosoftlockup nmi_watchdog=0" || true
+
+echo ""
+echo "kernel-xr installed: ${ACTUAL_KREL:-${KREL}}"
+echo ""
+echo "For RT/BCI workloads, install the xr-bci tuned profile:"
+echo "  sudo tuned-adm profile xr-bci"
+echo "  sudo reboot"
+echo "Validate: sudo smi-validate --full"
 
 %postun
 if [ $1 -eq 0 ]; then
