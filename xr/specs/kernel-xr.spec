@@ -106,6 +106,8 @@ scripts/config --set-str CONFIG_LOCALVERSION "-%{krelease}"
 # These ensure the kernel ships tools for characterizing and mitigating
 # SMI-induced latency on C610/Wellsburg PCH systems.
 scripts/config --enable CONFIG_HWLAT_TRACER
+scripts/config --enable CONFIG_OSNOISE_TRACER
+scripts/config --enable CONFIG_TIMERLAT_TRACER
 scripts/config --enable CONFIG_TRACER_SNAPSHOT
 scripts/config --enable CONFIG_X86_MSR
 scripts/config --module CONFIG_DELL_RBU
