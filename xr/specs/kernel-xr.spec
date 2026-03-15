@@ -43,8 +43,11 @@ BuildRequires:  rpm-build
 BuildRequires:  dwarves
 BuildRequires:  kmod
 
-Requires:       dracut
-Requires:       grubby
+Requires(pre):  coreutils
+Requires(pre):  systemd >= 203-2
+Requires(pre):  /usr/bin/kernel-install
+Requires(pre):  dracut >= 027
+Requires(preun): systemd >= 200
 
 Provides:       kernel-xr%{variant} = %{kversion}-%{krelease}
 Provides:       kernel = %{kversion}-%{krelease}
@@ -129,17 +132,13 @@ scripts/config --disable CONFIG_PREEMPT_VOLUNTARY
 scripts/config --disable CONFIG_PREEMPT_NONE
 %endif
 
-# Debug info: keep CONFIG_DEBUG_INFO_BTF=y (systemd 257 requires BPF/BTF for
-# cgroup v2 management — without it, switch-root hangs on Rocky 10.1).
-#
-# BTF depends on: !DEBUG_INFO_SPLIT && !DEBUG_INFO_REDUCED && BPF_SYSCALL
-# So we CANNOT use DEBUG_INFO_REDUCED or DEBUG_INFO_NONE.
-#
-# Use DWARF4 (smaller than DWARF5 default) and rely on -j4 parallelism cap
-# to control link-time memory (~4GB with DWARF4 vs ~8GB with DWARF5).
+# Debug info + BTF (systemd 257 requires BPF/BTF for cgroup v2).
+# Kconfig: CONFIG_DEBUG_INFO_BTF depends on !DEBUG_INFO_SPLIT && !DEBUG_INFO_REDUCED
+# Use DWARF5 (default, smaller than DWARF4) with BTF generation via pahole.
+# The .BTF section is ~1.6MB; DWARF is stripped by rpmbuild find-debuginfo.
 scripts/config --enable CONFIG_DEBUG_INFO
-scripts/config --enable CONFIG_DEBUG_INFO_DWARF4
-scripts/config --disable CONFIG_DEBUG_INFO_DWARF5
+scripts/config --enable CONFIG_DEBUG_INFO_DWARF5
+scripts/config --disable CONFIG_DEBUG_INFO_DWARF4
 scripts/config --disable CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
 scripts/config --disable CONFIG_DEBUG_INFO_REDUCED
 scripts/config --disable CONFIG_DEBUG_INFO_SPLIT
@@ -181,6 +180,14 @@ mkdir -p %{buildroot}/lib/modules
 make INSTALL_MOD_PATH=%{buildroot} modules_install
 make INSTALL_PATH=%{buildroot}/boot install
 
+# Copy vmlinuz into modules dir (required by kernel-install)
+cp %{buildroot}/boot/vmlinuz-${KREL} %{buildroot}/lib/modules/${KREL}/vmlinuz
+
+# Remove depmod auto-generated files (regenerated at install time)
+rm -f %{buildroot}/lib/modules/${KREL}/modules.{alias,alias.bin,builtin.alias.bin}
+rm -f %{buildroot}/lib/modules/${KREL}/modules.{dep,dep.bin,devname,softdep}
+rm -f %{buildroot}/lib/modules/${KREL}/modules.{symbols,symbols.bin}
+
 # Install vmlinux for devel
 mkdir -p %{buildroot}/usr/src/kernels/${KREL}
 cp -a .config Module.symvers System.map Makefile \
@@ -198,31 +205,55 @@ ln -sf /usr/src/kernels/${KREL} \
     %{buildroot}/lib/modules/${KREL}/build
 
 %post
+# Phase 1: signal that core is being installed (modules may arrive later)
 KREL=%{kversion}-%{krelease}
-# Find the actual installed kernel version (may include -rt suffix)
 ACTUAL_KREL=$(ls /lib/modules/ | grep "%{kversion}.*%{krelease}" | head -1)
-depmod -a ${ACTUAL_KREL:-${KREL}}
+mkdir -p /var/lib/rpm-state/kernel
+touch /var/lib/rpm-state/kernel/installing_core_${ACTUAL_KREL:-${KREL}}
 
-# Generate initramfs (CRITICAL: without this, storage drivers won't load)
-if [ -x /usr/bin/dracut ]; then
-    /usr/bin/dracut --force /boot/initramfs-${ACTUAL_KREL:-${KREL}}.img ${ACTUAL_KREL:-${KREL}}
+%posttrans
+# Phase 2: runs after ALL sub-packages in the transaction are installed.
+# This is the canonical point for kernel-install (triggers depmod, dracut, BLS).
+KREL=%{kversion}-%{krelease}
+ACTUAL_KREL=$(ls /lib/modules/ | grep "%{kversion}.*%{krelease}" | head -1)
+ACTUAL_KREL=${ACTUAL_KREL:-${KREL}}
+
+# Remove installing flag
+rm -f /var/lib/rpm-state/kernel/installing_core_${ACTUAL_KREL}
+
+# Register with weak-modules (RHEL/Rocky only)
+if [ -x /usr/sbin/weak-modules ]; then
+    /usr/sbin/weak-modules --add-kernel ${ACTUAL_KREL} || exit $?
 fi
 
-# Set as default boot kernel
-grubby --set-default /boot/vmlinuz-${ACTUAL_KREL:-${KREL}} || true
-
-# Apply hardware-invariant SMI mitigation boot params (from Dell T7810 BIOS RE)
-# Topology-dependent params (isolcpus, nohz_full) are left to the tuned profile.
-grubby --update-kernel=/boot/vmlinuz-${ACTUAL_KREL:-${KREL}} \
-  --args="tsc=nowatchdog clocksource=tsc nosoftlockup nmi_watchdog=0" || true
+# kernel-install orchestrates: depmod, dracut (initramfs), BLS entry creation
+if [ -x /usr/bin/kernel-install ]; then
+    /usr/bin/kernel-install add ${ACTUAL_KREL} /lib/modules/${ACTUAL_KREL}/vmlinuz || exit $?
+else
+    # Fallback for systems without kernel-install
+    depmod -a ${ACTUAL_KREL}
+    dracut --force /boot/initramfs-${ACTUAL_KREL}.img ${ACTUAL_KREL} || true
+    grubby --set-default /boot/vmlinuz-${ACTUAL_KREL} || true
+fi
 
 echo ""
-echo "kernel-xr installed: ${ACTUAL_KREL:-${KREL}}"
+echo "kernel-xr installed: ${ACTUAL_KREL}"
 echo ""
 echo "For RT/BCI workloads, install the xr-bci tuned profile:"
 echo "  sudo tuned-adm profile xr-bci"
 echo "  sudo reboot"
 echo "Validate: sudo smi-validate --full"
+
+%preun
+KREL=%{kversion}-%{krelease}
+ACTUAL_KREL=$(ls /lib/modules/ | grep "%{kversion}.*%{krelease}" | head -1)
+ACTUAL_KREL=${ACTUAL_KREL:-${KREL}}
+if [ -x /usr/bin/kernel-install ]; then
+    /usr/bin/kernel-install remove ${ACTUAL_KREL} || exit $?
+fi
+if [ -x /usr/sbin/weak-modules ]; then
+    /usr/sbin/weak-modules --remove-kernel ${ACTUAL_KREL} || exit $?
+fi
 
 %postun
 if [ $1 -eq 0 ]; then
