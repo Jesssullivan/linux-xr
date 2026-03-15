@@ -31,6 +31,7 @@ on:
 jobs:
   build-rpm:
     runs-on: linux-xr-docker
+    container: rockylinux/rockylinux:10
     timeout-minutes: 360
 
     strategy:
@@ -84,12 +85,12 @@ jobs:
       - name: Install build dependencies
         if: steps.filter.outputs.skip != 'true'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            gcc make libelf-dev libssl-dev openssl \
-            bc bison flex rsync rpm dwarves kmod \
-            curl xz-utils patch tar gzip cpio ccache \
-            lld zstd libzstd-dev
+          dnf install -y \
+            gcc make elfutils-libelf-devel openssl-devel openssl \
+            bc bison flex rsync rpm-build dwarves kmod \
+            curl xz patch tar gzip cpio ccache \
+            lld zstd libzstd-devel perl-interpreter \
+            diffutils findutils
 
       - name: Checkout
         if: steps.filter.outputs.skip != 'true'
