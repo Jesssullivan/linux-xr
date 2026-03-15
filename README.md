@@ -12,11 +12,23 @@ Fork of `torvalds/linux` with CI-built RPMs carrying VR/XR patches.
 |-------|---------|
 | `0007-vesa-dsc-bpp.patch` | VESA DisplayID DSC BPP parser, QP table + RC offset fixes for 8bpc 4:4:4 @ 8 BPP |
 | `bigscreen-beyond-edid.patch` | EDID non-desktop quirk for Beyond (BIG/0x1234 + 0x5095) |
-| `patch-6.19.3-rt1.patch` | PREEMPT_RT real-time scheduling (optional) |
+| `patch-6.19.3-rt1.patch` | PREEMPT_RT real-time scheduling (RT variant only) |
 
 Patches are maintained in [XoxdWM/patches](https://github.com/tinyland-inc/XoxdWM/tree/main/patches) and fetched at build time.
 
 RT opinions come primarily from very large AD/DA and related busses used for sensors on BCI server (~100:100 channels of carefully clocked I/O; uses external C777 sample wordclock).
+
+## Variants
+
+Each release includes two kernel variants:
+
+| Variant | Package | Use case |
+|---------|---------|----------|
+| **Generic** | `kernel-xr` | Standard XR workloads, desktop compositing |
+| **RT** | `kernel-xr-rt` | Sub-ms VR frame scheduling, BCI/AD-DA I/O |
+
+Both variants include the DSC and EDID patches. The RT variant additionally
+applies PREEMPT_RT for deterministic scheduling.
 
 ## Target hardware
 
@@ -217,7 +229,12 @@ cat /sys/devices/system/clocksource/clocksource0/available_clocksource
 # Extract base config from target machine first:
 ssh jess@honey "cat /boot/config-$(uname -r)" > xr/config/base.config
 
-# Build RPMs (requires Rocky Linux 10 or compatible):
+# Build generic kernel:
+./xr/scripts/build-rpm.sh \
+  --kernel-version 6.19.5 \
+  --xr-release 2
+
+# Build RT kernel:
 ./xr/scripts/build-rpm.sh \
   --kernel-version 6.19.5 \
   --xr-release 2 \
@@ -226,8 +243,18 @@ ssh jess@honey "cat /boot/config-$(uname -r)" > xr/config/base.config
 
 ## CI
 
-Tag push (`v6.19.5-xr2`) or manual dispatch triggers RPM build on
+Tag push (`v6.19.5-xr2`) or manual dispatch triggers RPM builds on
 [tinyland-docker](https://github.com/tinyland-inc/GloriousFlywheel) ARC runners (4 CPU / 16Gi).
+
+Both variants are built sequentially (sharing ccache) and attached to a single
+GitHub Release.
+
+Manual dispatch supports building a single variant:
+```bash
+gh workflow run build-kernel.yml -f variant=generic  # generic only
+gh workflow run build-kernel.yml -f variant=rt       # RT only
+gh workflow run build-kernel.yml -f variant=both     # both (default)
+```
 
 Build optimizations:
 - `CONFIG_DEBUG_INFO=n` — reduces link-time memory from ~8GB to ~2GB
