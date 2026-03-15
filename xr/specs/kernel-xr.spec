@@ -187,10 +187,15 @@ mkdir -p %{buildroot}/boot
 mkdir -p %{buildroot}/lib/modules
 
 make INSTALL_MOD_PATH=%{buildroot} modules_install
-make INSTALL_PATH=%{buildroot}/boot install
 
-# Copy vmlinuz into modules dir (required by kernel-install)
-cp %{buildroot}/boot/vmlinuz-${KREL} %{buildroot}/lib/modules/${KREL}/vmlinuz
+# Install kernel + support files manually (do NOT use `make install` — it
+# triggers kernel-install/dracut hooks which fail inside rpmbuild chroot)
+cp arch/x86/boot/bzImage %{buildroot}/boot/vmlinuz-${KREL}
+cp System.map %{buildroot}/boot/System.map-${KREL}
+cp .config %{buildroot}/boot/config-${KREL}
+
+# Copy vmlinuz into modules dir (required by kernel-install at install time)
+cp arch/x86/boot/bzImage %{buildroot}/lib/modules/${KREL}/vmlinuz
 
 # Remove depmod auto-generated files (regenerated at install time)
 rm -f %{buildroot}/lib/modules/${KREL}/modules.{alias,alias.bin,builtin.alias.bin}
