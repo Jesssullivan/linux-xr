@@ -43,6 +43,9 @@ BuildRequires:  rpm-build
 BuildRequires:  dwarves
 BuildRequires:  kmod
 
+Requires:       dracut
+Requires:       grubby
+
 Provides:       kernel-xr%{variant} = %{kversion}-%{krelease}
 Provides:       kernel = %{kversion}-%{krelease}
 
@@ -124,12 +127,16 @@ scripts/config --disable CONFIG_PREEMPT_VOLUNTARY
 scripts/config --disable CONFIG_PREEMPT_NONE
 %endif
 
-# Disable debug info to reduce link-time memory usage (~8GB -> ~2GB for vmlinux)
-# Debug info not needed for XR kernel — we're not debugging the kernel itself
-scripts/config --disable CONFIG_DEBUG_INFO
+# Reduce debug info to cut link-time memory (~8GB -> ~2GB for vmlinux)
+# CRITICAL: keep CONFIG_DEBUG_INFO_BTF=y — systemd 256 uses BPF for cgroup
+# management and will hang at switch-root without BTF support.
+# Use CONFIG_DEBUG_INFO_REDUCED instead of CONFIG_DEBUG_INFO_NONE.
+scripts/config --enable CONFIG_DEBUG_INFO
+scripts/config --enable CONFIG_DEBUG_INFO_REDUCED
 scripts/config --disable CONFIG_DEBUG_INFO_DWARF5
 scripts/config --disable CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
-scripts/config --enable CONFIG_DEBUG_INFO_NONE
+scripts/config --enable CONFIG_DEBUG_INFO_BTF
+scripts/config --enable CONFIG_DEBUG_INFO_BTF_MODULES
 
 make olddefconfig
 
@@ -175,6 +182,13 @@ KREL=%{kversion}-%{krelease}
 # Find the actual installed kernel version (may include -rt suffix)
 ACTUAL_KREL=$(ls /lib/modules/ | grep "%{kversion}.*%{krelease}" | head -1)
 depmod -a ${ACTUAL_KREL:-${KREL}}
+
+# Generate initramfs (CRITICAL: without this, storage drivers won't load)
+if [ -x /usr/bin/dracut ]; then
+    /usr/bin/dracut --force /boot/initramfs-${ACTUAL_KREL:-${KREL}}.img ${ACTUAL_KREL:-${KREL}}
+fi
+
+# Set as default boot kernel
 grubby --set-default /boot/vmlinuz-${ACTUAL_KREL:-${KREL}} || true
 
 # Apply hardware-invariant SMI mitigation boot params (from Dell T7810 BIOS RE)
