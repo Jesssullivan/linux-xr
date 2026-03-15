@@ -135,6 +135,7 @@ DEFINES=(
 
 if [[ -n "${RT_VERSION}" ]]; then
     DEFINES+=(--define "rt_version ${RT_VERSION}")
+    DEFINES+=(--define "variant -rt")
 fi
 
 # Pass CC through for ccache support

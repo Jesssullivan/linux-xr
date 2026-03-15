@@ -4,6 +4,7 @@
 #   --define "kversion 6.19.5" \
 #   --define "xr_release 1" \
 #   --define "rt_version 6.19.3-rt1" \
+#   --define "variant -rt" \
 #   kernel-xr.spec
 #
 # The build-rpm.sh script handles source/patch fetching and calls this.
@@ -12,8 +13,9 @@
 %{!?xr_release: %global xr_release 1}
 %global krelease  %{xr_release}.xr.el10
 %{!?rt_version: %global rt_version %{nil}}
+%{!?variant: %global variant %{nil}}
 
-Name:           kernel-xr
+Name:           kernel-xr%{variant}
 Version:        %{kversion}
 Release:        %{krelease}
 Summary:        XR-optimized kernel with DSC fixes for Bigscreen Beyond 2e
@@ -41,8 +43,8 @@ BuildRequires:  rpm-build
 BuildRequires:  dwarves
 BuildRequires:  kmod
 
+Provides:       kernel-xr%{variant} = %{kversion}-%{krelease}
 Provides:       kernel = %{kversion}-%{krelease}
-Conflicts:      kernel-xr < %{kversion}-%{krelease}
 
 %description
 Linux kernel %{kversion} with XR/VR patches for Bigscreen Beyond 2e headsets
