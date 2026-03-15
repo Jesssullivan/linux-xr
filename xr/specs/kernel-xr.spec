@@ -127,14 +127,21 @@ scripts/config --disable CONFIG_PREEMPT_VOLUNTARY
 scripts/config --disable CONFIG_PREEMPT_NONE
 %endif
 
-# Reduce debug info to cut link-time memory (~8GB -> ~2GB for vmlinux)
-# CRITICAL: keep CONFIG_DEBUG_INFO_BTF=y — systemd 256 uses BPF for cgroup
-# management and will hang at switch-root without BTF support.
-# Use CONFIG_DEBUG_INFO_REDUCED instead of CONFIG_DEBUG_INFO_NONE.
+# Debug info: keep CONFIG_DEBUG_INFO_BTF=y (systemd 257 requires BPF/BTF for
+# cgroup v2 management — without it, switch-root hangs on Rocky 10.1).
+#
+# BTF depends on: !DEBUG_INFO_SPLIT && !DEBUG_INFO_REDUCED && BPF_SYSCALL
+# So we CANNOT use DEBUG_INFO_REDUCED or DEBUG_INFO_NONE.
+#
+# Use DWARF4 (smaller than DWARF5 default) and rely on -j4 parallelism cap
+# to control link-time memory (~4GB with DWARF4 vs ~8GB with DWARF5).
 scripts/config --enable CONFIG_DEBUG_INFO
-scripts/config --enable CONFIG_DEBUG_INFO_REDUCED
+scripts/config --enable CONFIG_DEBUG_INFO_DWARF4
 scripts/config --disable CONFIG_DEBUG_INFO_DWARF5
 scripts/config --disable CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
+scripts/config --disable CONFIG_DEBUG_INFO_REDUCED
+scripts/config --disable CONFIG_DEBUG_INFO_SPLIT
+scripts/config --disable CONFIG_DEBUG_INFO_NONE
 scripts/config --enable CONFIG_DEBUG_INFO_BTF
 scripts/config --enable CONFIG_DEBUG_INFO_BTF_MODULES
 
