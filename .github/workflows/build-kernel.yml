@@ -88,7 +88,8 @@ jobs:
           sudo apt-get install -y \
             gcc make libelf-dev libssl-dev openssl \
             bc bison flex rsync rpm dwarves kmod \
-            curl xz-utils patch tar gzip cpio ccache
+            curl xz-utils patch tar gzip cpio ccache \
+            lld zstd libzstd-dev
 
       - name: Checkout
         if: steps.filter.outputs.skip != 'true'
@@ -119,9 +120,11 @@ jobs:
         if: steps.filter.outputs.skip != 'true'
         run: |
           ccache --set-config=cache_dir=${{ github.workspace }}/.ccache
-          ccache --max-size=4G
+          ccache --max-size=8G
           ccache --set-config=compression=true
           ccache --set-config=compression_level=6
+          ccache --set-config=depend_mode=true
+          ccache --set-config=sloppiness=time_macros,pch_defines
           ccache -z
           echo "CC=ccache gcc" >> "$GITHUB_ENV"
 

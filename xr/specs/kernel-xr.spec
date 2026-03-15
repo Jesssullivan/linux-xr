@@ -145,6 +145,8 @@ scripts/config --disable CONFIG_DEBUG_INFO_SPLIT
 scripts/config --disable CONFIG_DEBUG_INFO_NONE
 scripts/config --enable CONFIG_DEBUG_INFO_BTF
 scripts/config --enable CONFIG_DEBUG_INFO_BTF_MODULES
+scripts/config --enable CONFIG_DEBUG_INFO_COMPRESSED_ZSTD
+scripts/config --disable CONFIG_DEBUG_INFO_COMPRESSED_NONE
 
 # systemd 257 (Rocky 10.1) hard requirements — ensure these survive olddefconfig
 scripts/config --disable CONFIG_FW_LOADER_USER_HELPER
@@ -170,6 +172,13 @@ KREL=$(cat .kernel-release)
 # Kernel compilation uses ~1GB per gcc job; limit to avoid OOM on CI runners.
 JOBS=$(nproc 2>/dev/null || echo 2)
 [ "$JOBS" -gt 4 ] && JOBS=4
+
+# Deterministic build: without these, ccache gets 0% hits because
+# __DATE__/__TIME__/BUILD_TIMESTAMP differ on every invocation.
+export KBUILD_BUILD_TIMESTAMP=''
+export KBUILD_BUILD_USER='builder'
+export KBUILD_BUILD_HOST='ci'
+
 make %{?_cc:CC="%{_cc}"} -j${JOBS} V=0 bzImage modules
 
 %install
