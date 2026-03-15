@@ -9,6 +9,10 @@
 #
 # The build-rpm.sh script handles source/patch fetching and calls this.
 
+# Disable automatic debuginfo/debugsource subpackages — kernel handles
+# debug info internally via CONFIG_DEBUG_INFO and BTF.
+%global debug_package %{nil}
+
 %{!?kversion: %global kversion 6.19.5}
 %{!?xr_release: %global xr_release 1}
 %global krelease  %{xr_release}.xr.el10
