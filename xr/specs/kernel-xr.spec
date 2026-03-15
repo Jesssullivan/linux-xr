@@ -138,6 +138,17 @@ scripts/config --disable CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
 scripts/config --enable CONFIG_DEBUG_INFO_BTF
 scripts/config --enable CONFIG_DEBUG_INFO_BTF_MODULES
 
+# systemd 257 (Rocky 10.1) hard requirements — ensure these survive olddefconfig
+scripts/config --disable CONFIG_FW_LOADER_USER_HELPER
+scripts/config --enable CONFIG_AUTOFS_FS
+scripts/config --enable CONFIG_TMPFS_XATTR
+scripts/config --enable CONFIG_TMPFS_POSIX_ACL
+scripts/config --enable CONFIG_OVERLAY_FS
+
+# Validate: list any new config options not resolved by base.config
+echo "=== New config options (should be empty or expected) ==="
+make listnewconfig 2>/dev/null | grep -c CONFIG_ || true
+
 make olddefconfig
 
 # Capture the actual kernel release string (includes -rt1 if RT patched)
