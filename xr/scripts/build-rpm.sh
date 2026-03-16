@@ -14,7 +14,7 @@ XR_RELEASE="1"
 RT_VERSION=""
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 XR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-EXWM_REPO="Jesssullivan/XoxdWM"
+EXWM_REPO="tinyland-inc/XoxdWM"
 EXWM_BRANCH="main"
 
 usage() {
