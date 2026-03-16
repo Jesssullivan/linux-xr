@@ -165,6 +165,54 @@ make listnewconfig 2>/dev/null | grep -c CONFIG_ || true
 
 make olddefconfig
 
+# POST-OLDDEFCONFIG VALIDATION:
+# make olddefconfig can re-enable options via Kconfig dependencies.
+# Re-apply critical overrides and abort if they don't stick.
+echo "=== Post-olddefconfig: re-applying critical systemd 257 overrides ==="
+scripts/config --disable CONFIG_FW_LOADER_USER_HELPER
+scripts/config --disable CONFIG_DEBUG_INFO_NONE
+scripts/config --disable CONFIG_DEBUG_INFO_REDUCED
+scripts/config --enable CONFIG_DEBUG_INFO_BTF
+
+# Run olddefconfig again to resolve any new dependencies from re-applied overrides
+make olddefconfig
+
+# Hard validation: abort build if critical configs are wrong
+echo "=== Validating critical kernel config ==="
+fail=0
+check_config() {
+    local key="$1" expected="$2"
+    actual=$(grep "^${key}=" .config 2>/dev/null || grep "^# ${key} is not set" .config 2>/dev/null || echo "MISSING")
+    if [ "$expected" = "n" ]; then
+        if echo "$actual" | grep -q "is not set"; then
+            echo "  OK: ${key} is not set"
+        elif echo "$actual" | grep -q "=n"; then
+            echo "  OK: ${key}=n"
+        else
+            echo "  FAIL: ${key} should be disabled but got: ${actual}"
+            fail=1
+        fi
+    else
+        if echo "$actual" | grep -q "=${expected}"; then
+            echo "  OK: ${key}=${expected}"
+        else
+            echo "  FAIL: ${key} expected=${expected} got: ${actual}"
+            fail=1
+        fi
+    fi
+}
+check_config CONFIG_FW_LOADER_USER_HELPER n
+check_config CONFIG_DEBUG_INFO_BTF y
+check_config CONFIG_DEBUG_INFO_NONE n
+check_config CONFIG_DEBUG_INFO_REDUCED n
+check_config CONFIG_BPF_SYSCALL y
+check_config CONFIG_CGROUP_BPF y
+if [ "$fail" -ne 0 ]; then
+    echo "FATAL: Critical kernel config validation failed. Aborting build."
+    echo "This kernel would fail to boot on systemd 257 (Rocky 10.1)."
+    exit 1
+fi
+
 # Capture the actual kernel release string (includes -rt1 if RT patched)
 KREL=$(make -s kernelrelease)
 echo "Kernel release: ${KREL}"
