@@ -85,6 +85,8 @@ jobs:
       - name: Install build dependencies
         if: steps.filter.outputs.skip != 'true'
         run: |
+          dnf install -y epel-release
+          dnf config-manager --set-enabled crb
           dnf install -y \
             gcc make elfutils-libelf-devel openssl-devel openssl \
             bc bison flex rsync rpm-build dwarves kmod \
