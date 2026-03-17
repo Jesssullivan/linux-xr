@@ -24,7 +24,7 @@ Version:        %{kversion}
 Release:        %{krelease}
 Summary:        XR-optimized kernel with DSC fixes for Bigscreen Beyond 2e
 License:        GPL-2.0-only
-URL:            https://github.com/Jesssullivan/linux-xr
+URL:            https://github.com/tinyland-inc/linux-xr
 
 Source0:        linux-%{kversion}.tar.xz
 Source1:        base.config
@@ -290,8 +290,10 @@ ACTUAL_KREL=${ACTUAL_KREL:-${KREL}}
 rm -f /var/lib/rpm-state/kernel/installing_core_${ACTUAL_KREL}
 
 # Register with weak-modules (RHEL/Rocky only)
+# weak-modules may warn about missing symvers (non-fatal) — don't abort %posttrans.
+# If weak-modules fails, kernel-install still creates the BLS entry correctly.
 if [ -x /usr/sbin/weak-modules ]; then
-    /usr/sbin/weak-modules --add-kernel ${ACTUAL_KREL} || exit $?
+    /usr/sbin/weak-modules --add-kernel ${ACTUAL_KREL} || true
 fi
 
 # kernel-install orchestrates: depmod, dracut (initramfs), BLS entry creation
