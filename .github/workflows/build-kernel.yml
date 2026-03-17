@@ -30,7 +30,7 @@ on:
 
 jobs:
   build-rpm:
-    runs-on: tinyland-docker
+    runs-on: tinyland-dind
     container: rockylinux/rockylinux:10
     timeout-minutes: 360
 
