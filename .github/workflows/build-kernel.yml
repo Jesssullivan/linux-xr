@@ -35,14 +35,12 @@ jobs:
     timeout-minutes: 360
 
     strategy:
+      fail-fast: false
       max-parallel: 1
       matrix:
         variant:
           - { name: generic, rt_version: "" }
           - { name: rt, rt_version: "6.19.3-rt1" }
-
-    if: >-
-      always()
 
     steps:
       - name: Check variant filter
@@ -100,7 +98,7 @@ jobs:
 
       - name: Restore ccache
         if: steps.filter.outputs.skip != 'true'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ${{ github.workspace }}/.ccache
           key: ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-${{ github.sha }}
@@ -108,11 +106,10 @@ jobs:
             ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-
             ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-
             ccache-${{ steps.version.outputs.kversion }}-
-          save-always: true
 
       - name: Restore kernel sources
         if: steps.filter.outputs.skip != 'true'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/rpmbuild/SOURCES/linux-*.tar.xz
@@ -147,6 +144,23 @@ jobs:
       - name: Show ccache stats
         if: always() && steps.filter.outputs.skip != 'true'
         run: ccache -s
+
+      # Explicit cache saves — not reliant on post hooks that get killed on cancellation
+      - name: Save ccache
+        if: always() && steps.filter.outputs.skip != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-${{ github.sha }}
+
+      - name: Save kernel sources
+        if: steps.filter.outputs.skip != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/rpmbuild/SOURCES/linux-*.tar.xz
+            ~/rpmbuild/SOURCES/patch-*-rt*.patch
+          key: sources-${{ steps.version.outputs.kversion }}-${{ steps.version.outputs.rt_version }}
 
       - name: Upload RPM artifacts
         if: steps.filter.outputs.skip != 'true'
