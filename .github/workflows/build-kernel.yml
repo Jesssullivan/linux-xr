@@ -83,9 +83,19 @@ jobs:
       - name: Install build dependencies
         if: steps.filter.outputs.skip != 'true'
         run: |
-          dnf install -y epel-release
+          # Pin dl.rockylinux.org as fallback when mirrorlist is unreachable
+          for repo in /etc/yum.repos.d/rocky*.repo; do
+            sed -i 's|^mirrorlist=|#mirrorlist=|' "$repo"
+            sed -i 's|^#baseurl=http://dl.rockylinux.org|baseurl=https://dl.rockylinux.org|' "$repo"
+          done
+          dnf install -y --setopt=retries=3 epel-release
+          # Re-enable mirrorlist now that epel is installed (better mirror selection)
+          for repo in /etc/yum.repos.d/rocky*.repo; do
+            sed -i 's|^#mirrorlist=|mirrorlist=|' "$repo"
+            sed -i 's|^baseurl=https://dl.rockylinux.org|#baseurl=http://dl.rockylinux.org|' "$repo"
+          done
           dnf config-manager --set-enabled crb
-          dnf install -y \
+          dnf install -y --setopt=retries=3 \
             gcc make elfutils-libelf-devel openssl-devel openssl \
             bc bison flex rsync rpm-build dwarves kmod \
             curl xz patch tar gzip cpio ccache \
