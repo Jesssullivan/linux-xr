@@ -15,6 +15,7 @@ RT_VERSION=""
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 XR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PATCH_DIR="${XR_DIR}/patches"
+SERIES_FILE="${PATCH_DIR}/series"
 
 usage() {
     echo "Usage: $0 --kernel-version VER --xr-release REL [--rt-version RT_VER]"
@@ -97,10 +98,17 @@ fi
 # --- Step 3: Stage XR carry patches from this repo ---
 echo ">>> Staging XR patches from ${PATCH_DIR}..."
 
-PATCHES=(
-    "0007-vesa-dsc-bpp.patch"
-    "bigscreen-beyond-edid.patch"
-)
+if [[ ! -f "${SERIES_FILE}" ]]; then
+    echo "ERROR: ${SERIES_FILE} not found."
+    exit 1
+fi
+
+mapfile -t PATCHES < <(grep -vE '^[[:space:]]*(#|$)' "${SERIES_FILE}")
+
+if [[ "${#PATCHES[@]}" -eq 0 ]]; then
+    echo "ERROR: ${SERIES_FILE} does not list any carry patches."
+    exit 1
+fi
 
 for patch in "${PATCHES[@]}"; do
     echo "    ${patch}"

@@ -2,6 +2,8 @@
 
 This directory is the kernel repo's source of truth for the private carry set.
 
+Patch application order is defined in `series`.
+
 Current carry classification:
 
 - `0007-vesa-dsc-bpp.patch`: carry while the DSC fixed-BPP series remains unmerged upstream

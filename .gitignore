@@ -135,6 +135,7 @@ patches
 series
 !/xr/patches/
 !/xr/patches/**
+!/xr/patches/series
 
 # ctags files
 tags

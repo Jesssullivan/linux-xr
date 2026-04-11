@@ -283,6 +283,7 @@ Build optimizations:
 - `CONFIG_DEBUG_INFO=n` — reduces link-time memory from ~8GB to ~2GB
 - Parallelism capped at `-j4` — prevents OOM on memory-constrained runners
 - ccache with `save-always: true` — warm builds ~1h vs cold ~2h
+- `weekly-cadence.yml` — fetches upstream refs, renders a markdown report from `xr/patches/series`, and opens a weekly cadence issue
 
 ## Version scheme
 
@@ -290,11 +291,12 @@ Build optimizations:
 
 ## Kernel upgrade workflow
 
-1. `git fetch upstream && git merge upstream/master`
-2. Rebase `xr/main` onto new master
-3. Update `xr/config/base.config` if honey's base kernel changes
+1. Review the weekly cadence issue opened by `.github/workflows/weekly-cadence.yml`
+2. Merge or rebase onto the latest upstream Linux commit that still keeps the carry set clean
+3. Update `xr/config/base.config` if `honey`'s running base kernel changes
 4. Tag: `git tag -a v6.20.1-xr1 -m "XR kernel 6.20.1"`
 5. CI builds + publishes RPMs
+6. Promote only after `honey` and `yoga` validation
 
 ## Upstream status
 
@@ -304,3 +306,5 @@ Build optimizations:
 | QP table + RC offset (raika-xino) | Never submitted | Needs amd-gfx submission |
 | EDID non_desktop quirk (BIG/0x1234) | Not submitted | Submit to drm-misc |
 | PREEMPT_RT | Mainline since 6.12 | N/A |
+
+Carry patch order is defined in `xr/patches/series`.
