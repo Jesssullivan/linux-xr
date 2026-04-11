@@ -1,0 +1,27 @@
+name: Upstream Opportunity
+description: Track a carry patch that should be reduced, dropped, or submitted upstream.
+title: "upstream: "
+labels:
+  - upstream
+body:
+  - type: input
+    id: patch
+    attributes:
+      label: Carry Patch
+      placeholder: xr/patches/bigscreen-beyond-edid.patch
+    validations:
+      required: true
+  - type: textarea
+    id: current_state
+    attributes:
+      label: Current State
+      description: Link the current thread, series, or upstream source.
+    validations:
+      required: true
+  - type: textarea
+    id: next_step
+    attributes:
+      label: Next Step
+      description: resend, rebase, test, drop, or continue carrying.
+    validations:
+      required: true

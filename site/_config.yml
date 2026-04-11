@@ -1,0 +1,4 @@
+title: linux-xr
+description: Stable install and rollout docs for the XR kernel fork.
+markdown: kramdown
+permalink: pretty

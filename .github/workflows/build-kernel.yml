@@ -204,8 +204,8 @@ jobs:
           body: |
             ## XR Kernel Release
 
-            Built from tag `${{ github.ref_name }}` with patches from
-            [XoxdWM](https://github.com/Jesssullivan/XoxdWM/tree/main/patches).
+            Built from tag `${{ github.ref_name }}` with carry patches from
+            [`xr/patches`](https://github.com/tinyland-inc/linux-xr/tree/xr/main/xr/patches).
 
             ### Variants
             - **kernel-xr** (generic) — standard preemption
@@ -218,13 +218,9 @@ jobs:
 
             ### Install
             ```bash
-            # Generic variant
-            sudo dnf install ./kernel-xr-*.x86_64.rpm
-
-            # RT variant
-            sudo dnf install ./kernel-xr-rt-*.x86_64.rpm
-
-            sudo reboot
+            # Choose one:
+            curl -fsSL https://tinyland-inc.github.io/linux-xr/install/rocky10-generic.sh | bash
+            curl -fsSL https://tinyland-inc.github.io/linux-xr/install/rocky10-rt.sh | bash
             ```
 
             ### Verify

@@ -6,15 +6,36 @@ Builds are run on tinyland-inc/GloriousFlywheel infrastructure, including machin
 
 Fork of `torvalds/linux` with CI-built RPMs carrying VR/XR patches.
 
+## Current State
+
+As of 2026-04-11:
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Release artifacts | Proven | Latest public release ships generic and RT RPMs. |
+| `honey` rollout | Proven (generic) | `honey` is currently running `6.19.5-5.xr.el10`. |
+| `honey` RT default boot | Gated | RT artifacts exist, but RT is not yet the default documented lane. |
+| `yoga` rollout | Pending | `yoga` is still on the stock Rocky 10 kernel. |
+| Install surface | In progress | GitHub Pages and stable installer paths live in `site/`. |
+| Patch carry set | Localized | Kernel-owned carry patches live under `xr/patches/`. |
+
+## Public Surfaces
+
+- Releases: <https://github.com/tinyland-inc/linux-xr/releases>
+- Stable install docs: `https://tinyland-inc.github.io/linux-xr/`
+- Generic installer: `https://tinyland-inc.github.io/linux-xr/install/rocky10-generic.sh`
+- RT installer: `https://tinyland-inc.github.io/linux-xr/install/rocky10-rt.sh`
+- Carry patches: [`xr/patches`](xr/patches)
+
 ## What's patched
 
 | Patch | Purpose |
 |-------|---------|
 | `0007-vesa-dsc-bpp.patch` | VESA DisplayID DSC BPP parser, QP table + RC offset fixes for 8bpc 4:4:4 @ 8 BPP |
 | `bigscreen-beyond-edid.patch` | EDID non-desktop quirk for Beyond (BIG/0x1234 + 0x5095) |
-| `patch-6.19.3-rt1.patch` | PREEMPT_RT real-time scheduling (RT variant only) |
+| `patch-6.19.3-rt1.patch` | PREEMPT_RT real-time scheduling (RT variant only, downloaded from kernel.org) |
 
-Patches are maintained in [XoxdWM/patches](https://github.com/tinyland-inc/XoxdWM/tree/main/patches) and fetched at build time.
+Patches are maintained in this repository under [`xr/patches`](xr/patches).
 
 RT opinions come primarily from very large AD/DA and related busses used for sensors on BCI server (~100:100 channels of carefully clocked I/O; uses external C777 sample wordclock).
 
@@ -88,7 +109,9 @@ Order of operations for first deployment on a Dell T7810:
 
 ### Phase 1: Install kernel
 
-- [ ] Download RPMs from [Releases](https://github.com/Jesssullivan/linux-xr/releases) or CI artifacts
+- [ ] Install from [Releases](https://github.com/tinyland-inc/linux-xr/releases) or the stable Pages installer surface
+- [ ] Generic: `curl -fsSL https://tinyland-inc.github.io/linux-xr/install/rocky10-generic.sh | bash`
+- [ ] RT: `curl -fsSL https://tinyland-inc.github.io/linux-xr/install/rocky10-rt.sh | bash`
 - [ ] `sudo dnf install ./kernel-xr-6.19.5-*.xr.el10.x86_64.rpm`
 - [ ] Generate initramfs: `sudo dracut --force /boot/initramfs-6.19.5-rt1-1.xr.el10.img 6.19.5-rt1-1.xr.el10`
 - [ ] Create BLS boot entry (see [Boot entry setup](#boot-entry-setup))
