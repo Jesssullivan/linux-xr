@@ -20,7 +20,7 @@ For non-root validation or staged rollout work, both scripts also support:
 - `--print-assets` to show the selected release and RPM URLs without downloading
 - `--download-only` to fetch RPMs without installing them
 - `--target-dir <dir>` to control where downloaded RPMs are staged
-- `--no-set-default` to install without changing the default boot entry
+- `--no-set-default` to install without leaving the new kernel as the default boot entry
 - `--with-devel` to also install the matching `kernel-xr-devel` or `kernel-xr-rt-devel` RPM
 - `--with-headers` to also install the matching `kernel-xr-headers` or `kernel-xr-rt-headers` RPM
 
@@ -32,4 +32,5 @@ For non-root validation or staged rollout work, both scripts also support:
 ## Notes
 
 - The default runtime-only install avoids conflicts with Rocky's stock `kernel-headers` package on existing hosts.
+- `--no-set-default` captures the current default kernel and restores it after install if the package scriptlets change it.
 - The `--with-headers` flag is for development hosts that need UAPI headers and may require removing or replacing the stock `kernel-headers` package first.
