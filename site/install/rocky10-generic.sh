@@ -7,6 +7,8 @@ MANIFEST_URL="${PAGES_BASE}/releases/latest.json"
 DOWNLOAD_ONLY=0
 PRINT_ASSETS=0
 SET_DEFAULT=1
+INSTALL_DEVEL=0
+INSTALL_HEADERS=0
 TARGET_DIR=""
 
 need_cmd() {
@@ -25,6 +27,8 @@ Options:
   --download-only     Download RPMs without installing them
   --target-dir DIR    Directory to place downloaded RPMs in
   --no-set-default    Skip grubby default-kernel update after install
+  --with-devel        Install the matching kernel-xr-devel RPM too
+  --with-headers      Install the matching kernel-xr-headers RPM too
   --help              Show this help
 EOF
 }
@@ -35,6 +39,8 @@ while [[ $# -gt 0 ]]; do
         --download-only) DOWNLOAD_ONLY=1; shift ;;
         --target-dir) TARGET_DIR="$2"; shift 2 ;;
         --no-set-default) SET_DEFAULT=0; shift ;;
+        --with-devel) INSTALL_DEVEL=1; shift ;;
+        --with-headers) INSTALL_HEADERS=1; shift ;;
         --help) usage; exit 0 ;;
         *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
     esac
@@ -108,7 +114,28 @@ if (( DOWNLOAD_ONLY == 1 )); then
     exit 0
 fi
 
-sudo dnf install -y ./*.rpm
+mapfile -t INSTALL_RPMS < <(find . -maxdepth 1 -type f -name 'kernel-xr-[0-9]*.rpm' | sort)
+
+if (( INSTALL_DEVEL == 1 )); then
+    mapfile -t DEVEL_RPMS < <(find . -maxdepth 1 -type f -name 'kernel-xr-devel-*.rpm' | sort)
+    INSTALL_RPMS+=("${DEVEL_RPMS[@]}")
+fi
+
+if (( INSTALL_HEADERS == 1 )); then
+    mapfile -t HEADER_RPMS < <(find . -maxdepth 1 -type f -name 'kernel-xr-headers-*.rpm' | sort)
+    INSTALL_RPMS+=("${HEADER_RPMS[@]}")
+fi
+
+if [ "${#INSTALL_RPMS[@]}" -eq 0 ]; then
+    echo "No installable generic RPMs found in ${DOWNLOAD_DIR}." >&2
+    exit 1
+fi
+
+echo "Installing runtime kernel package(s) from ${DOWNLOAD_DIR}."
+if (( INSTALL_DEVEL == 1 || INSTALL_HEADERS == 1 )); then
+    echo "Optional development/header packages requested."
+fi
+sudo dnf install -y "${INSTALL_RPMS[@]}"
 
 if (( SET_DEFAULT == 1 )) && command -v grubby >/dev/null 2>&1; then
     kernel_path="$(ls -1 /boot/vmlinuz-*xr.el10* 2>/dev/null | grep -v 'rt' | sort -V | tail -1 || true)"
