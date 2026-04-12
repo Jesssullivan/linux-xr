@@ -138,6 +138,10 @@ scripts/config --enable CONFIG_UIO_PCI_GENERIC
 
 # RT-specific config
 %if "%{rt_version}" != ""
+# Linux 6.19's PREEMPT_RT Kconfig depends on CONFIG_EXPERT. Without this,
+# the build can retain the -rt kernelrelease while silently falling back to
+# a non-RT preemption model.
+scripts/config --enable CONFIG_EXPERT
 scripts/config --enable CONFIG_PREEMPT_RT
 scripts/config --disable CONFIG_PREEMPT_VOLUNTARY
 scripts/config --disable CONFIG_PREEMPT_NONE
@@ -214,6 +218,12 @@ check_config CONFIG_DEBUG_INFO_NONE n
 check_config CONFIG_DEBUG_INFO_REDUCED n
 check_config CONFIG_BPF_SYSCALL y
 check_config CONFIG_CGROUP_BPF y
+%if "%{rt_version}" != ""
+check_config CONFIG_EXPERT y
+check_config CONFIG_PREEMPT_RT y
+check_config CONFIG_PREEMPT_NONE n
+check_config CONFIG_PREEMPT_VOLUNTARY n
+%endif
 if [ "$fail" -ne 0 ]; then
     echo "FATAL: Critical kernel config validation failed. Aborting build."
     echo "This kernel would fail to boot on systemd 257 (Rocky 10.1)."
