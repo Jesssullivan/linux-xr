@@ -13,6 +13,8 @@ curl -fsSL https://tinyland-inc.github.io/linux-xr/install/rocky10-rt.sh | bash
 
 The scripts download the latest release assets, install the runtime kernel RPM by default, try to set the newest matching XR kernel as default, and print the expected post-reboot verification command.
 
+The public `latest.json` manifest is regenerated from the latest published GitHub release and drives the Pages install surface.
+
 For non-root validation or staged rollout work, both scripts also support:
 
 - `--print-assets` to show the selected release and RPM URLs without downloading
