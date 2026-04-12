@@ -18,6 +18,11 @@
 %global krelease  %{xr_release}.xr.el10
 %{!?rt_version: %global rt_version %{nil}}
 %{!?variant: %global variant %{nil}}
+%if "%{variant}" == "-rt"
+%global actual_krel_regex ^%{kversion}-rt[^[:space:]]*-%{krelease}$
+%else
+%global actual_krel_regex ^%{kversion}-%{krelease}$
+%endif
 
 Name:           kernel-xr%{variant}
 Version:        %{kversion}
@@ -275,7 +280,7 @@ ln -sf /usr/src/kernels/${KREL} \
 %post
 # Phase 1: signal that core is being installed (modules may arrive later)
 KREL=%{kversion}-%{krelease}
-ACTUAL_KREL=$(ls /lib/modules/ | grep "%{kversion}.*%{krelease}" | head -1)
+ACTUAL_KREL=$(ls /lib/modules/ | grep -E '%{actual_krel_regex}' | sort -V | tail -1)
 mkdir -p /var/lib/rpm-state/kernel
 touch /var/lib/rpm-state/kernel/installing_core_${ACTUAL_KREL:-${KREL}}
 
@@ -283,7 +288,7 @@ touch /var/lib/rpm-state/kernel/installing_core_${ACTUAL_KREL:-${KREL}}
 # Phase 2: runs after ALL sub-packages in the transaction are installed.
 # This is the canonical point for kernel-install (triggers depmod, dracut, BLS).
 KREL=%{kversion}-%{krelease}
-ACTUAL_KREL=$(ls /lib/modules/ | grep "%{kversion}.*%{krelease}" | head -1)
+ACTUAL_KREL=$(ls /lib/modules/ | grep -E '%{actual_krel_regex}' | sort -V | tail -1)
 ACTUAL_KREL=${ACTUAL_KREL:-${KREL}}
 
 # Remove installing flag
@@ -316,7 +321,7 @@ echo "Validate: sudo smi-validate --full"
 
 %preun
 KREL=%{kversion}-%{krelease}
-ACTUAL_KREL=$(ls /lib/modules/ | grep "%{kversion}.*%{krelease}" | head -1)
+ACTUAL_KREL=$(ls /lib/modules/ | grep -E '%{actual_krel_regex}' | sort -V | tail -1)
 ACTUAL_KREL=${ACTUAL_KREL:-${KREL}}
 if [ -x /usr/bin/kernel-install ]; then
     /usr/bin/kernel-install remove ${ACTUAL_KREL} || exit $?

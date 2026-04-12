@@ -30,9 +30,14 @@ on:
 
 jobs:
   build-rpm:
-    runs-on: tinyland-dind
-    container: rockylinux/rockylinux:10
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+      - tinyland-nix
     timeout-minutes: 360
+    env:
+      BUILD_IMAGE: rockylinux/rockylinux:10
 
     strategy:
       fail-fast: false
@@ -80,27 +85,14 @@ jobs:
           echo "rt_version=${RT_VERSION}" >> "$GITHUB_OUTPUT"
           echo "Building kernel ${KVERSION}-${XR_RELEASE}.xr.el10 [${{ matrix.variant.name }}] (RT: ${RT_VERSION:-disabled})"
 
-      - name: Install build dependencies
+      - name: Clean stale workspace cache
         if: steps.filter.outputs.skip != 'true'
         run: |
-          # Pin dl.rockylinux.org as fallback when mirrorlist is unreachable
-          for repo in /etc/yum.repos.d/rocky*.repo; do
-            sed -i 's|^mirrorlist=|#mirrorlist=|' "$repo"
-            sed -i 's|^#baseurl=http://dl.rockylinux.org|baseurl=https://dl.rockylinux.org|' "$repo"
-          done
-          dnf install -y --setopt=retries=3 epel-release
-          # Re-enable mirrorlist now that epel is installed (better mirror selection)
-          for repo in /etc/yum.repos.d/rocky*.repo; do
-            sed -i 's|^#mirrorlist=|mirrorlist=|' "$repo"
-            sed -i 's|^baseurl=https://dl.rockylinux.org|#baseurl=http://dl.rockylinux.org|' "$repo"
-          done
-          dnf config-manager --set-enabled crb
-          dnf install -y --setopt=retries=3 \
-            gcc make elfutils-libelf-devel openssl-devel openssl \
-            bc bison flex rsync rpm-build dwarves kmod \
-            curl xz patch tar gzip cpio ccache \
-            lld zstd libzstd-devel perl-interpreter \
-            diffutils findutils
+          mkdir -p "${GITHUB_WORKSPACE}"
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/work" \
+            "${BUILD_IMAGE}" \
+            bash -lc 'rm -rf /work/.ccache'
 
       - name: Checkout
         if: steps.filter.outputs.skip != 'true'
@@ -110,7 +102,7 @@ jobs:
         if: steps.filter.outputs.skip != 'true'
         uses: actions/cache/restore@v4
         with:
-          path: ${{ github.workspace }}/.ccache
+          path: ${{ runner.temp }}/linux-xr-ccache-${{ matrix.variant.name }}
           key: ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-${{ github.sha }}
           restore-keys: |
             ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-
@@ -126,41 +118,76 @@ jobs:
             ~/rpmbuild/SOURCES/patch-*-rt*.patch
           key: sources-${{ steps.version.outputs.kversion }}-${{ steps.version.outputs.rt_version }}
 
-      - name: Configure ccache
+      - name: Clean previous RPM outputs
         if: steps.filter.outputs.skip != 'true'
         run: |
-          ccache --set-config=cache_dir=${{ github.workspace }}/.ccache
-          ccache --max-size=8G
-          ccache --set-config=compression=true
-          ccache --set-config=compression_level=6
-          ccache --set-config=depend_mode=true
-          ccache --set-config=sloppiness=time_macros,pch_defines
-          ccache -z
-          echo "CC=ccache gcc" >> "$GITHUB_ENV"
+          mkdir -p "${HOME}/rpmbuild/RPMS"
+          find "${HOME}/rpmbuild/RPMS" -type f -name 'kernel-xr*.rpm' -delete
 
       - name: Build RPMs
         if: steps.filter.outputs.skip != 'true'
+        env:
+          KVERSION: ${{ steps.version.outputs.kversion }}
+          XR_RELEASE: ${{ steps.version.outputs.xr_release }}
+          RT_VERSION: ${{ steps.version.outputs.rt_version }}
         run: |
-          chmod +x xr/scripts/build-rpm.sh
-          RT_FLAG=""
-          if [[ -n "${{ steps.version.outputs.rt_version }}" ]]; then
-            RT_FLAG="--rt-version ${{ steps.version.outputs.rt_version }}"
-          fi
-          xr/scripts/build-rpm.sh \
-            --kernel-version "${{ steps.version.outputs.kversion }}" \
-            --xr-release "${{ steps.version.outputs.xr_release }}" \
-            ${RT_FLAG}
-
-      - name: Show ccache stats
-        if: always() && steps.filter.outputs.skip != 'true'
-        run: ccache -s
+          CCACHE_DIR_HOST="${RUNNER_TEMP}/linux-xr-ccache-${{ matrix.variant.name }}"
+          mkdir -p "${HOME}/rpmbuild" "${CCACHE_DIR_HOST}"
+          docker run --rm --network host \
+            -v "${GITHUB_WORKSPACE}:/work" \
+            -v "${HOME}/rpmbuild:/root/rpmbuild" \
+            -v "${CCACHE_DIR_HOST}:/work/.ccache" \
+            -w /work \
+            -e HOME=/root \
+            -e GITHUB_WORKSPACE=/work \
+            -e KVERSION \
+            -e XR_RELEASE \
+            -e RT_VERSION \
+            -e CC="ccache gcc" \
+            "${BUILD_IMAGE}" \
+            bash -lc '
+              set -euo pipefail
+              for repo in /etc/yum.repos.d/rocky*.repo; do
+                sed -i "s|^mirrorlist=|#mirrorlist=|" "$repo"
+                sed -i "s|^#baseurl=http://dl.rockylinux.org|baseurl=https://dl.rockylinux.org|" "$repo"
+              done
+              dnf install -y --setopt=retries=3 epel-release
+              for repo in /etc/yum.repos.d/rocky*.repo; do
+                sed -i "s|^#mirrorlist=|mirrorlist=|" "$repo"
+                sed -i "s|^baseurl=https://dl.rockylinux.org|#baseurl=http://dl.rockylinux.org|" "$repo"
+              done
+              dnf config-manager --set-enabled crb
+              dnf install -y --setopt=retries=3 \
+                gcc make elfutils-libelf-devel openssl-devel openssl \
+                bc bison flex rsync rpm-build dwarves kmod \
+                curl xz patch tar gzip cpio ccache \
+                lld zstd libzstd-devel perl-interpreter \
+                diffutils findutils
+              ccache --set-config=cache_dir=/work/.ccache
+              ccache --max-size=8G
+              ccache --set-config=compression=true
+              ccache --set-config=compression_level=6
+              ccache --set-config=depend_mode=true
+              ccache --set-config=sloppiness=time_macros,pch_defines
+              ccache -z
+              chmod +x xr/scripts/build-rpm.sh
+              RT_FLAG=()
+              if [[ -n "${RT_VERSION}" ]]; then
+                RT_FLAG=(--rt-version "${RT_VERSION}")
+              fi
+              xr/scripts/build-rpm.sh \
+                --kernel-version "${KVERSION}" \
+                --xr-release "${XR_RELEASE}" \
+                "${RT_FLAG[@]}"
+              ccache -s
+            '
 
       # Explicit cache saves — not reliant on post hooks that get killed on cancellation
       - name: Save ccache
         if: always() && steps.filter.outputs.skip != 'true'
         uses: actions/cache/save@v4
         with:
-          path: ${{ github.workspace }}/.ccache
+          path: ${{ runner.temp }}/linux-xr-ccache-${{ matrix.variant.name }}
           key: ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-${{ github.sha }}
 
       - name: Save kernel sources
