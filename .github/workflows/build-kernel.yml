@@ -109,6 +109,12 @@ jobs:
             ~/rpmbuild/SOURCES/patch-*-rt*.patch
           key: sources-${{ steps.version.outputs.kversion }}-${{ steps.version.outputs.rt_version }}
 
+      - name: Clean previous RPM outputs
+        if: steps.filter.outputs.skip != 'true'
+        run: |
+          mkdir -p "${HOME}/rpmbuild/RPMS"
+          find "${HOME}/rpmbuild/RPMS" -type f -name 'kernel-xr*.rpm' -delete
+
       - name: Build RPMs
         if: steps.filter.outputs.skip != 'true'
         env:
