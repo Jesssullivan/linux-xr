@@ -14,8 +14,8 @@ XR_RELEASE="1"
 RT_VERSION=""
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 XR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-EXWM_REPO="tinyland-inc/XoxdWM"
-EXWM_BRANCH="main"
+PATCH_DIR="${XR_DIR}/patches"
+SERIES_FILE="${PATCH_DIR}/series"
 
 usage() {
     echo "Usage: $0 --kernel-version VER --xr-release REL [--rt-version RT_VER]"
@@ -95,18 +95,28 @@ if [[ -n "${RT_VERSION}" ]]; then
     fi
 fi
 
-# --- Step 3: Fetch XR patches from exwm repo ---
-echo ">>> Fetching XR patches from ${EXWM_REPO}..."
+# --- Step 3: Stage XR carry patches from this repo ---
+echo ">>> Staging XR patches from ${PATCH_DIR}..."
 
-PATCHES=(
-    "0007-vesa-dsc-bpp.patch"
-    "bigscreen-beyond-edid.patch"
-)
+if [[ ! -f "${SERIES_FILE}" ]]; then
+    echo "ERROR: ${SERIES_FILE} not found."
+    exit 1
+fi
+
+mapfile -t PATCHES < <(grep -vE '^[[:space:]]*(#|$)' "${SERIES_FILE}")
+
+if [[ "${#PATCHES[@]}" -eq 0 ]]; then
+    echo "ERROR: ${SERIES_FILE} does not list any carry patches."
+    exit 1
+fi
 
 for patch in "${PATCHES[@]}"; do
-    PATCH_URL="https://raw.githubusercontent.com/${EXWM_REPO}/${EXWM_BRANCH}/patches/${patch}"
     echo "    ${patch}"
-    curl -fSL -o "${RPMBUILD}/SOURCES/${patch}" "${PATCH_URL}"
+    if [[ ! -f "${PATCH_DIR}/${patch}" ]]; then
+        echo "ERROR: missing carry patch ${PATCH_DIR}/${patch}"
+        exit 1
+    fi
+    install -m 0644 "${PATCH_DIR}/${patch}" "${RPMBUILD}/SOURCES/${patch}"
 done
 
 # --- Step 4: Copy base config ---

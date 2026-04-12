@@ -1,0 +1,70 @@
+name: Publish Pages
+
+on:
+  push:
+    branches: ['xr/main']
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - name: Build Jekyll site
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./site
+          destination: ./_site
+
+      - name: Generate latest release manifest
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const path = require("path");
+            const { owner, repo } = context.repo;
+            const data = await github.rest.repos.getLatestRelease({ owner, repo });
+            const payload = {
+              tag_name: data.data.tag_name,
+              published_at: data.data.published_at,
+              html_url: data.data.html_url,
+              assets: data.data.assets.map((asset) => ({
+                name: asset.name,
+                size: asset.size,
+                browser_download_url: asset.browser_download_url,
+              })),
+            };
+            fs.mkdirSync(path.join("_site", "releases"), { recursive: true });
+            fs.writeFileSync(
+              path.join("_site", "releases", "latest.json"),
+              JSON.stringify(payload, null, 2) + "\n",
+            );
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

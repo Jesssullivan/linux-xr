@@ -112,6 +112,8 @@ modules.order
 !.editorconfig
 !.get_maintainer.ignore
 !.gitattributes
+!/.github/
+!/.github/**
 !.gitignore
 !.kunitconfig
 !.mailmap
@@ -131,6 +133,9 @@ patches-*
 # quilt's files
 patches
 series
+!/xr/patches/
+!/xr/patches/**
+!/xr/patches/series
 
 # ctags files
 tags

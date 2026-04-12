@@ -1,0 +1,64 @@
+name: Weekly Cadence
+
+on:
+  schedule:
+    - cron: '0 13 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  cadence:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch upstream refs
+        run: |
+          git fetch --no-tags --prune https://github.com/torvalds/linux.git master:refs/remotes/upstream/master
+          git fetch --tags --prune https://github.com/gregkh/linux.git master:refs/remotes/stable/master
+
+      - name: Generate cadence report
+        run: |
+          chmod +x xr/scripts/generate-cadence-report.sh
+          xr/scripts/generate-cadence-report.sh \
+            --base-ref HEAD \
+            --upstream-ref refs/remotes/upstream/master \
+            --stable-ref refs/remotes/stable/master \
+            --output cadence-report.md
+          sed -n '1,200p' cadence-report.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cadence-report
+          path: cadence-report.md
+          retention-days: 30
+
+      - name: Open cadence issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('cadence-report.md', 'utf8');
+            const date = new Date().toISOString().slice(0, 10);
+            const payload = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `cadence: ${date} weekly upstream watch`,
+              body,
+            };
+
+            try {
+              await github.rest.issues.create({ ...payload, labels: ['cadence'] });
+            } catch (error) {
+              if ((error.message || '').includes('Label does not exist')) {
+                await github.rest.issues.create(payload);
+              } else {
+                throw error;
+              }
+            }

@@ -1,0 +1,33 @@
+name: Deployment
+description: Track host rollout or install-surface work.
+title: "deployment: "
+labels:
+  - deployment
+body:
+  - type: input
+    id: host
+    attributes:
+      label: Host
+      placeholder: honey or yoga
+    validations:
+      required: true
+  - type: input
+    id: current_kernel
+    attributes:
+      label: Current Kernel
+      placeholder: 6.12.0-124.45.1.el10_1.x86_64
+  - type: dropdown
+    id: variant
+    attributes:
+      label: Target Variant
+      options:
+        - generic
+        - rt
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+    validations:
+      required: true

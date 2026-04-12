@@ -1,0 +1,27 @@
+name: Cadence Work
+description: Track weekly upstream merge or release-cadence work.
+title: "cadence: "
+labels:
+  - cadence
+body:
+  - type: input
+    id: kernel_version
+    attributes:
+      label: Target Kernel Version
+      placeholder: 6.15.x or 6.12.y
+    validations:
+      required: true
+  - type: textarea
+    id: divergence
+    attributes:
+      label: Divergence Summary
+      description: What changed upstream and what still needs to be carried?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: What has to be true to ship this cadence item?
+    validations:
+      required: true

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Install Docs
+    url: https://tinyland-inc.github.io/linux-xr/
+    about: Use the stable install and rollout docs before filing deployment issues.

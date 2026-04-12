@@ -1,0 +1,37 @@
+[
+  {
+    "name": "cadence",
+    "color": "0e8a16",
+    "description": "Weekly upstream merge and release cadence work"
+  },
+  {
+    "name": "carry",
+    "color": "d93f0b",
+    "description": "Private kernel carry patch work"
+  },
+  {
+    "name": "upstream",
+    "color": "1d76db",
+    "description": "Submission, review, or reduction work against upstream Linux"
+  },
+  {
+    "name": "rt",
+    "color": "5319e7",
+    "description": "PREEMPT_RT build, boot, and validation work"
+  },
+  {
+    "name": "packaging",
+    "color": "fbca04",
+    "description": "RPM build, release, and installer packaging work"
+  },
+  {
+    "name": "deployment",
+    "color": "0052cc",
+    "description": "Rollout and validation work on named hosts"
+  },
+  {
+    "name": "ci",
+    "color": "c2e0c6",
+    "description": "GitHub Actions and automation work"
+  }
+]
