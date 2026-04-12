@@ -4,6 +4,8 @@ on:
   push:
     branches: ['xr/main']
     paths:
+      # Keep a push-based escape hatch because release events created by
+      # GitHub Actions do not always fan out into a second workflow run.
       - 'site/**'
       - '.github/workflows/pages.yml'
   release:
