@@ -85,6 +85,15 @@ jobs:
           echo "rt_version=${RT_VERSION}" >> "$GITHUB_OUTPUT"
           echo "Building kernel ${KVERSION}-${XR_RELEASE}.xr.el10 [${{ matrix.variant.name }}] (RT: ${RT_VERSION:-disabled})"
 
+      - name: Clean stale workspace cache
+        if: steps.filter.outputs.skip != 'true'
+        run: |
+          mkdir -p "${GITHUB_WORKSPACE}"
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/work" \
+            "${BUILD_IMAGE}" \
+            bash -lc 'rm -rf /work/.ccache'
+
       - name: Checkout
         if: steps.filter.outputs.skip != 'true'
         uses: actions/checkout@v4
@@ -93,7 +102,7 @@ jobs:
         if: steps.filter.outputs.skip != 'true'
         uses: actions/cache/restore@v4
         with:
-          path: ${{ github.workspace }}/.ccache
+          path: ${{ runner.temp }}/linux-xr-ccache-${{ matrix.variant.name }}
           key: ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-${{ github.sha }}
           restore-keys: |
             ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-
@@ -122,11 +131,12 @@ jobs:
           XR_RELEASE: ${{ steps.version.outputs.xr_release }}
           RT_VERSION: ${{ steps.version.outputs.rt_version }}
         run: |
-          mkdir -p "${HOME}/rpmbuild" "${GITHUB_WORKSPACE}/.ccache"
+          CCACHE_DIR_HOST="${RUNNER_TEMP}/linux-xr-ccache-${{ matrix.variant.name }}"
+          mkdir -p "${HOME}/rpmbuild" "${CCACHE_DIR_HOST}"
           docker run --rm --network host \
             -v "${GITHUB_WORKSPACE}:/work" \
             -v "${HOME}/rpmbuild:/root/rpmbuild" \
-            -v "${GITHUB_WORKSPACE}/.ccache:/work/.ccache" \
+            -v "${CCACHE_DIR_HOST}:/work/.ccache" \
             -w /work \
             -e HOME=/root \
             -e GITHUB_WORKSPACE=/work \
@@ -177,7 +187,7 @@ jobs:
         if: always() && steps.filter.outputs.skip != 'true'
         uses: actions/cache/save@v4
         with:
-          path: ${{ github.workspace }}/.ccache
+          path: ${{ runner.temp }}/linux-xr-ccache-${{ matrix.variant.name }}
           key: ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-${{ github.sha }}
 
       - name: Save kernel sources
