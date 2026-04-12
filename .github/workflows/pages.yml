@@ -25,12 +25,6 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
-      - name: Build Jekyll site
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./site
-          destination: ./_site
-
       - name: Generate latest release manifest
         uses: actions/github-script@v7
         with:
@@ -49,11 +43,17 @@ jobs:
                 browser_download_url: asset.browser_download_url,
               })),
             };
-            fs.mkdirSync(path.join("_site", "releases"), { recursive: true });
+            fs.mkdirSync(path.join("site", "releases"), { recursive: true });
             fs.writeFileSync(
-              path.join("_site", "releases", "latest.json"),
+              path.join("site", "releases", "latest.json"),
               JSON.stringify(payload, null, 2) + "\n",
             );
+
+      - name: Build Jekyll site
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./site
+          destination: ./_site
 
       - uses: actions/upload-pages-artifact@v3
         with:
