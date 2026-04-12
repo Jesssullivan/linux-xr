@@ -131,16 +131,29 @@ if [ "${#INSTALL_RPMS[@]}" -eq 0 ]; then
     exit 1
 fi
 
+ORIGINAL_DEFAULT=""
+if (( SET_DEFAULT == 0 )) && command -v grubby >/dev/null 2>&1; then
+    ORIGINAL_DEFAULT="$(sudo grubby --default-kernel 2>/dev/null || true)"
+fi
+
 echo "Installing runtime kernel package(s) from ${DOWNLOAD_DIR}."
 if (( INSTALL_DEVEL == 1 || INSTALL_HEADERS == 1 )); then
     echo "Optional development/header packages requested."
 fi
 sudo dnf install -y "${INSTALL_RPMS[@]}"
 
-if (( SET_DEFAULT == 1 )) && command -v grubby >/dev/null 2>&1; then
-    kernel_path="$(ls -1 /boot/vmlinuz-*xr.el10* 2>/dev/null | grep -v 'rt' | sort -V | tail -1 || true)"
-    if [ -n "${kernel_path:-}" ]; then
-        sudo grubby --set-default "$kernel_path" || true
+if command -v grubby >/dev/null 2>&1; then
+    if (( SET_DEFAULT == 1 )); then
+        kernel_path="$(ls -1 /boot/vmlinuz-*xr.el10* 2>/dev/null | grep -v 'rt' | sort -V | tail -1 || true)"
+        if [ -n "${kernel_path:-}" ]; then
+            sudo grubby --set-default "$kernel_path" || true
+        fi
+    elif [ -n "${ORIGINAL_DEFAULT}" ]; then
+        current_default="$(sudo grubby --default-kernel 2>/dev/null || true)"
+        if [ -n "${current_default}" ] && [ "${current_default}" != "${ORIGINAL_DEFAULT}" ]; then
+            echo "Restoring previous default boot entry: ${ORIGINAL_DEFAULT}"
+            sudo grubby --set-default "${ORIGINAL_DEFAULT}" || true
+        fi
     fi
 fi
 
