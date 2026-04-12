@@ -199,6 +199,8 @@ check_config() {
             echo "  OK: ${key} is not set"
         elif echo "$actual" | grep -q "=n"; then
             echo "  OK: ${key}=n"
+        elif [ "$actual" = "MISSING" ]; then
+            echo "  OK: ${key} is absent"
         else
             echo "  FAIL: ${key} should be disabled but got: ${actual}"
             fail=1
