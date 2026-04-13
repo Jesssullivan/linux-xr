@@ -1,0 +1,20 @@
+name: Determinate CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches:
+      - xr/main
+
+jobs:
+  determinate-ci:
+    # This caches and validates the thin Nix surface for linux-xr. It is not
+    # the canonical kernel RPM release lane, which remains the Rocky/Linux
+    # workflow in build-kernel.yml.
+    uses: DeterminateSystems/ci/.github/workflows/workflow.yml@main
+    permissions:
+      id-token: write
+      contents: read
+    with:
+      visibility: unlisted

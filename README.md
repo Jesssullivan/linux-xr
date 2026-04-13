@@ -27,6 +27,19 @@ As of 2026-04-11:
 - RT installer: `https://tinyland-inc.github.io/linux-xr/install/rocky10-rt.sh`
 - Carry patches: [`xr/patches`](xr/patches)
 
+## Nix / FlakeHub
+
+This repo now carries a thin flake surface in [`flake.nix`](flake.nix) for
+developer tooling and cacheable checks. It is intentionally not the canonical
+kernel release build.
+
+- `nix develop` provides a shell with the core patch/report tooling.
+- `nix flake check` validates the patch series and shell-script syntax.
+- `nix run .#cadence-report -- --upstream-ref <ref> --stable-ref <ref>` runs the weekly cadence report helper from a repo checkout.
+- `.github/workflows/determinate-ci.yml` pushes those lightweight flake outputs through Determinate CI / FlakeHub Cache.
+
+The real RPM release lane remains [`build-kernel.yml`](.github/workflows/build-kernel.yml) plus [`xr/scripts/build-rpm.sh`](xr/scripts/build-rpm.sh) on Linux. Modeling the full kernel RPM build itself as a flake output is a separate, larger piece of work that should stay explicitly tracked.
+
 ## What's patched
 
 | Patch | Purpose |
