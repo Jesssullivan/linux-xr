@@ -6,17 +6,21 @@ title: honey
 
 Role: primary XR validation host.
 
-Current known state from the 2026-04-11 audit:
+Current known state from the 2026-04-12 rollout:
 
-- running kernel: `6.19.5-5.xr.el10`
-- installed generic XR kernels: `6.19.5-4`, `6.19.5-5`, and `6.19.5-6`
-- installed RT runtime RPM: `kernel-xr-rt-6.19.5-6.xr.el10`
-- current `v6.19.5-xr6` RT artifacts do not register a BLS entry or initramfs on install; they are not reboot-ready yet
+- running kernel: `6.19.5-7.xr.el10`
+- saved default boot kernel: `/boot/vmlinuz-6.19.5-7.xr.el10`
+- installed generic XR runtime RPM: `kernel-xr-6.19.5-7.xr.el10`
+- installed RT XR runtime RPM: `kernel-xr-rt-6.19.5-8.xr.el10`
+- one-time RT boot into `6.19.5-rt1-8.xr.el10` succeeded
+- live RT verification on `honey` confirmed `uname -v` contains `PREEMPT_RT` and `/sys/kernel/realtime` is `1`
+- normal reboot after the RT test returned the host to the saved generic default as expected
 - OpenXR userspace present
 - Monado unit files present but disabled
+- DRM nodes present on both the generic and RT validation boots
 - sudo requires an interactive password on this host
 
 Current rollout stance:
 
-- generic XR kernel: active and documented
-- RT XR kernel: still gated pending RPM post-install fix, repeatable boot validation, and latency checks
+- generic XR kernel: active, documented, and the persistent default
+- RT XR kernel: reboot-valid and functionally verified, but still gated for regular use pending latency tooling and deeper XR smoke
