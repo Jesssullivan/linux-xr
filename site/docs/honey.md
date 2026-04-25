@@ -6,7 +6,22 @@ title: honey
 
 Role: primary XR validation host.
 
+This page owns shipped-kernel rollout context and downstream-consumer framing.
+It does not own the current Dell workstation validation ledger for `honey`.
+
+Use the companion `Dell-7810` repo for the current host-side RT claim ladder:
+
+- C1: RT boot proved
+- C2: RT host posture validated
+- C3: RT operational acceptability
+
+This repo owns C0 supplier facts: the generic and RT kernel RPMs, install
+surface, carry patch set, and release cadence. It does not own SMI, NUMA,
+Chapel, C-state, reset, or workstation acceptance evidence.
+
 Historical rollout evidence from the 2026-04-12 validation:
+
+Current known supplier-side state:
 
 - running kernel: `6.19.5-7.xr.el10`
 - saved default boot kernel: `/boot/vmlinuz-6.19.5-7.xr.el10`
@@ -30,3 +45,9 @@ Rollout stance:
 
 - generic XR kernel: active, documented, and the persistent default
 - RT XR kernel: one-time reboot-valid and functionally verified, but still gated for regular use pending latency tooling and deeper XR smoke
+
+For live `honey` host state and current RT acceptance, see:
+
+- <https://github.com/Jesssullivan/Dell-7810/blob/main/docs/platform/rt-research-contract.md>
+- <https://github.com/Jesssullivan/Dell-7810/blob/main/docs/platform/honey-rt-validation-2026-04-23.md>
+- <https://github.com/Jesssullivan/Dell-7810/blob/main/docs/tracking/rt-smi-numa-chapel-focus-2026-04-25.md>

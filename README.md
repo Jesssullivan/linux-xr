@@ -93,6 +93,12 @@ applies PREEMPT_RT for deterministic scheduling.
 
 Order of operations for first kernel deployment on a Dell T7810:
 
+This checklist is supplier-side bootstrap guidance for the kernel package. It
+does not replace the current Dell workstation validation ledger. Current BIOS,
+SMI, C-state, PREEMPT_RT acceptance, NUMA, and rollback evidence for `honey`
+lives in `Jesssullivan/Dell-7810`; this repo should only claim package
+availability, install flow, and kernel carry status.
+
 ### Phase 0: Host preflight
 
 - [ ] Confirm the Dell-owned host runbook says the target is ready for this
