@@ -24,14 +24,14 @@ Carry order is defined in `xr/patches/series`.
   - state: upstream candidate
   - reason: Bigscreen Beyond non-desktop quirk remains absent from upstream `drm_edid.c`
   - route: `xr/patches/bigscreen-beyond-edid.route.md`
-  - current gate: live `honey` EDID identity is captured for `BIG/0x1234`, but
-    a DRM connector-property capture proving `non-desktop=1` is still missing
-  - patch gate: the carry is GNU-patch usable but `git apply --check` fails, so
-    v1 must be regenerated against current upstream or `drm-misc-next`
+  - current evidence: live `honey` EDID identity and DRM connector property are
+    captured for `BIG/0x1234`; `DP-2` reports `non-desktop=1`
+  - patch gate: the carry is now `git apply --check` clean against current
+    `xr/main`; v1 still needs a normal upstream/drm-misc topic branch
 
 ## Current Upstream Snapshot
 
-- linux-xr `xr/main`: `2e5d29edc83e`
+- linux-xr `xr/main`: `3beda6220731`
 - upstream `master` observed from kernel.org: `897d54018cc9`
 - latest upstream tag observed locally: `v7.0`
 - latest `6.19.y` stable tag observed locally: `v6.19.14`
@@ -77,10 +77,10 @@ isolated to the DRM EDID quirk table. The current route is:
 
 The 2026-04-25 read-only honey probe established `/sys/class/drm/card0-DP-2`
 as connected with a 256-byte EDID whose first 16 bytes include
-`09 27 34 12`, supporting `BIG/0x1234`. It did not prove `non-desktop=1`:
-sysfs did not expose `non_desktop`, `drm_info`, `modetest`, and `edid-decode`
-were missing, unprivileged debugfs state was not readable, and `sudo -n` was
-not available.
+`09 27 34 12`, supporting `BIG/0x1234`. A follow-up Dell-owned libdrm capture
+then proved the connector property: `DP-2` reports `non-desktop=1`. The
+evidence is saved in `Jesssullivan/Dell-7810` at
+`data/captures/honey/drm-connector-properties-2026-04-25.txt`.
 
 ## Kernel Cadence
 
