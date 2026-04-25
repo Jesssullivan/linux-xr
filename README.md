@@ -161,95 +161,23 @@ EOF
 sudo grubby --set-default /boot/vmlinuz-6.19.5-rt1-1.xr.el10
 ```
 
-## RT boot parameters
+## Host RT posture and troubleshooting
 
-Kernel parameters used by the Dell T7810 host runbook for PREEMPT_RT on
-Haswell-EP / C610 systems:
+This repo owns the kernel package and installer surface, not the live Dell
+workstation acceptance ledger.
 
-| Parameter | Purpose |
-|-----------|---------|
-| `tsc=nowatchdog` | Prevent clocksource watchdog from falsely marking TSC unstable under RT load |
-| `clocksource=tsc` | Use TSC (20ns access) instead of HPET (1us access) |
-| `nosoftlockup` | Disable soft lockup detector (false positives during RT scheduling) |
-| `intel_pstate=disable` | Prevent frequency scaling from interfering with TSC calibration |
-| `processor.max_cstate=1` | Prevent deep C-states that add APIC timer wakeup latency |
-| `intel_idle.max_cstate=0` | Disable intel_idle driver's C-state management |
+For `honey`, the Dell-owned host runbook defines the RT cmdline posture, early
+boot debug parameters, T7810 SMI/timer checks, C610 register landmarks, and the
+generic-lane fallback rule:
 
-### Debug parameters (for boot failures)
+- <https://github.com/Jesssullivan/Dell-7810/blob/main/docs/platform/linux-xr-install-and-rollback.md>
+- <https://github.com/Jesssullivan/Dell-7810/blob/main/docs/platform/t7810-rt-boot-troubleshooting.md>
+- <https://github.com/Jesssullivan/Dell-7810/blob/main/docs/platform/rt-research-contract.md>
 
-If the RT kernel fails to boot silently (PREEMPT_RT uses nbcon console threading — no output before kthreads are created):
-
-```
-earlyprintk=vga,keep ignore_loglevel debug initcall_debug nosmp nosoftlockup
-```
-
-| Parameter | Purpose |
-|-----------|---------|
-| `earlyprintk=vga,keep` | Write directly to VGA memory, bypassing nbcon — shows output during early hang |
-| `initcall_debug` | Print every init function with timestamps — last line before hang = culprit |
-| `nosmp` | Boot with 1 CPU only — eliminates dual-socket TSC sync as a variable |
-| `ignore_loglevel` | Show all kernel messages regardless of log level |
-
-Progressive debug: if `nosmp` works, try `maxcpus=1`, then `maxcpus=2`, `maxcpus=4`, etc. to find where it breaks.
-
-If timers are suspected: `clocksource=jiffies nohpet notsc` forces PIT-based jiffies (most basic timer).
-
-Serial console (T7810 has internal 9-pin "SERIAL1" header): `earlyprintk=serial,ttyS0,115200 console=ttyS0,115200n8`
-
-### RT fallback (if PREEMPT_RT cannot boot)
-
-Use the generic `kernel-xr` lane with `PREEMPT_DYNAMIC` and boot params:
-
-```
-preempt=full threadirqs
-```
-
-This is a fallback posture, not a substitute for measured PREEMPT_RT evidence:
-- Threaded IRQ handlers (same mechanism as RT)
-- Full kernel preemption at all preemption points
-- No sleeping spinlock conversion (the part that causes boot issues)
-
-## RT kernel failure analysis (Dell T7810)
-
-### Root causes (ranked by likelihood)
-
-1. **nbcon console threading**: PREEMPT_RT 6.x creates per-console kthreads for printk. Before these exist, only emergency/panic output displays. A hang during early init produces a completely dark screen — not a crash, just invisible.
-
-2. **BIOS A02 deficiencies**: Factory BIOS from 2014 has incomplete ACPI tables, old microcode with TSC-deadline errata, and possibly broken HPET exposure. 32 revisions of fixes in A34 address these.
-
-3. **SMI storms**: C610 PCH generates SMIs from USB Legacy emulation (`LEGACY_USB_EN`, `LEGACY_USB2_EN` bits in `SMI_EN` register at `ACPI_BASE+0x30`) and TCO watchdog (`TCO_EN`). SMIs last ~100us+ and stall RT's converted sleeping locks during handoff.
-
-4. **Dual-socket TSC sync**: `check_tsc_sync_target()` runs a tight spin-loop between sockets. Under RT, the spin_lock is converted to a sleeping RT-mutex, which may deadlock if the timer subsystem isn't fully initialized.
-
-5. **TSC-deadline timer errata**: Haswell-EP with old microcode has known bugs where TSC-deadline mode fires spurious interrupts. Fix: `clearcpuid=tsc_deadline_timer` boot param, or microcode update (BIOS A34).
-
-### SMI investigation (run on stock kernel)
-
-```bash
-# Measure hardware-induced latency (SMIs)
-sudo hwlatdetect --duration=60 --threshold=10
-
-# Count SMIs
-sudo rdmsr -p 0 0x34   # MSR_SMI_COUNT (before)
-sleep 10
-sudo rdmsr -p 0 0x34   # MSR_SMI_COUNT (after)
-
-# Check timer health
-dmesg | grep -i hpet
-dmesg | grep -i tsc
-cat /sys/devices/system/clocksource/clocksource0/available_clocksource
-```
-
-### C610 SMI_EN register map (ACPI_BASE + 0x30)
-
-| Bit | Name | Description |
-|-----|------|-------------|
-| 0 | GBL_SMI_EN | Global SMI enable (master switch — do NOT clear) |
-| 3 | LEGACY_USB_EN | USB 1.1 legacy emulation SMI |
-| 5 | APMC_EN | Software SMI via APM port |
-| 13 | TCO_EN | TCO watchdog SMI |
-| 14 | PERIODIC_EN | Periodic SMI |
-| 17 | LEGACY_USB2_EN | USB 2.0 legacy emulation SMI |
+`linux-xr` should not claim that `honey` is RT-acceptable because an RT package
+exists or because a historical boot succeeded. It may claim C0 supplier facts:
+the package was built, the installer exists, and the kernel feature set is
+available for Dell-owned validation.
 
 ## Build locally
 
