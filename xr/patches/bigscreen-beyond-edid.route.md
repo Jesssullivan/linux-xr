@@ -25,6 +25,12 @@ As of 2026-04-25:
   `BIG/0x1234` on the connected headset path.
 - A 2026-04-25 libdrm capture on `honey` proves the live connector property:
   `connector=DP-2 ... state=connected` and `property=non-desktop value=1`.
+- Local hardware evidence currently covers `BIG/0x1234` only. `BIG/0x5095`
+  remains a public-report/route candidate unless we capture a Beyond 2e EDID or
+  decide to narrow v1 to the locally proven ID.
+- The unpatched-baseline behavior was not captured on `honey`. The expected
+  upstream argument is the quirk-table mechanism: without an EDID quirk entry,
+  this manufacturer/product ID is not marked with `EDID_QUIRK_NON_DESKTOP`.
 - The carry patch has been cleaned so `git apply --check` succeeds against
   current `xr/main`.
 - The stale `mail-archive.com` reference has been replaced with a
@@ -40,7 +46,9 @@ Do not send v1 until all of these are true:
    `data/captures/honey/drm-connector-properties-2026-04-25.txt`.
 2. The evidence bundle includes EDID identity from the same connected path:
    connector name, status, raw EDID bytes or saved `edid.bin`, decoded
-   manufacturer `BIG`, and product `0x1234` or `0x5095`.
+   manufacturer `BIG`, and product `0x1234` or `0x5095`. Current local evidence
+   satisfies this for `0x1234`; do not imply local `0x5095` proof until a
+   Beyond 2e capture exists.
 3. The patch is regenerated against current upstream or `drm-misc-next` using
    normal kernel patch flow, not copied directly from the release carry file.
 4. `scripts/checkpatch.pl` is clean or any warning is explicitly justified.
@@ -85,6 +93,10 @@ connector=DP-2 id=306 state=connected modes=2
   property=non-desktop value=1 prop_id=6
 ```
 
+This capture was taken on the XR kernel that carries the quirk. It proves the
+local patched runtime behavior for `BIG/0x1234`; it does not prove the
+unpatched baseline or `BIG/0x5095` hardware behavior.
+
 Do not restart services, reboot the machine, or touch `rke2` for this evidence
 capture.
 
@@ -100,8 +112,9 @@ Suggested subject:
 drm/edid: Add non-desktop quirk for Bigscreen Beyond HMDs
 ```
 
-Keep v1 narrow. If only `BIG/0x1234` has local evidence, submit only that ID or
-explicitly call out why `BIG/0x5095` is included without local proof.
+Keep v1 narrow. As of 2026-04-25, only `BIG/0x1234` has local evidence. Submit
+only that ID, or explicitly state that `BIG/0x5095` is included from the prior
+public report rather than from local hardware capture.
 
 Local checks before sending:
 
