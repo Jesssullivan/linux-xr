@@ -235,12 +235,12 @@ Build optimizations:
 
 ## Upstream status
 
-As of 2026-04-25, `xr/main` is on `55f63ebff7df`. Kernel.org has advanced beyond this repo's `origin/master` snapshot: upstream `master` was observed at `27d128c1cff6`, `v7.0` exists, and stable `v6.19.14` exists. The RPM lane still builds the configured `6.19.5` tarball until the cadence item deliberately moves it.
+As of 2026-04-25, `xr/main` was observed at `0eba001f6bf2`. Kernel.org has advanced beyond this repo's `origin/master` snapshot: upstream `master` was observed at `897d54018cc9`, `v7.0` exists, and stable `v6.19.14` exists. The RPM lane still builds the configured `6.19.5` tarball until the cadence item deliberately moves it.
 
 | Patch/workstream | Upstream status | Next action |
 |-------|----------------|-----|
-| VESA DisplayID DSC BPP parser / amdgpu handling | In-flight upstream series; not present in current upstream checkout | Track Bolyukin fixed-DSC-BPP series and drop this part when it lands. |
-| QP table + RC offset adjustments | Local carry; not submitted as a standalone upstream series | Split from the DisplayID parser carry and decide whether this is evidence-backed upstream material or host-only risk. |
+| VESA DisplayID DSC BPP parser / amdgpu handling | In-flight upstream series; not present in current upstream checkout | Track Bolyukin v7 fixed-DSC-BPP series and drop this part when it lands. |
+| QP table + RC offset adjustments | Local carry; not submitted as a standalone upstream series | Split from the DisplayID parser carry using `xr/patches/0007-vesa-dsc-bpp.map.md` and decide whether this is evidence-backed upstream material or host-only risk. |
 | EDID non-desktop quirk for `BIG/0x1234` and `BIG/0x5095` | Absent from current upstream checkout | Submit as a small drm-edid/drm-misc candidate after local validation. |
 | SMI and NUMA posture | Platform/runtime validation, not a linux-xr source patch | Keep kernel config support here; keep validators, tuned profiles, and host captures in Dell-7810/XoxdWM surfaces. |
 | PREEMPT_RT | Mainline since 6.12; this repo still downloads RT patches for the configured 6.19.x RT build lane | Re-evaluate when the RPM lane moves to a kernel whose RT posture is fully mainline for our target release. |
