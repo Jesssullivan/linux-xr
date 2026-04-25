@@ -123,7 +123,8 @@ availability, install flow, and kernel carry status.
 ### Phase 2: Verify display + DSC
 
 - [ ] `dmesg | grep "VESA.*DSC.*BPP"` — parser finds BPP=128
-- [ ] `cat /sys/class/drm/card1-DP-2/non_desktop` — shows `1`
+- [ ] Capture the headset DRM connector property showing `non-desktop=1`;
+      use `drm_info`, `modetest`, DRM debugfs, or sysfs if the host exposes it.
 - [ ] `zcat /proc/config.gz | grep PREEMPT_RT` — shows `CONFIG_PREEMPT_RT=y`
 - [ ] Power on Beyond via HID, check link training in dmesg
 - [ ] Verify DSC BPP=8.0 selected by VESA DisplayID parser
@@ -235,13 +236,13 @@ Build optimizations:
 
 ## Upstream status
 
-As of 2026-04-25, `xr/main` was observed at `0eba001f6bf2`. Kernel.org has advanced beyond this repo's `origin/master` snapshot: upstream `master` was observed at `897d54018cc9`, `v7.0` exists, and stable `v6.19.14` exists. The RPM lane still builds the configured `6.19.5` tarball until the cadence item deliberately moves it.
+As of 2026-04-25, `xr/main` was observed at `2e5d29edc83e`. Kernel.org has advanced beyond this repo's `origin/master` snapshot: upstream `master` was observed at `897d54018cc9`, `v7.0` exists, and stable `v6.19.14` exists. The RPM lane still builds the configured `6.19.5` tarball until the cadence item deliberately moves it.
 
 | Patch/workstream | Upstream status | Next action |
 |-------|----------------|-----|
 | VESA DisplayID DSC BPP parser / amdgpu handling | In-flight upstream series; not present in current upstream checkout | Track Bolyukin v7 fixed-DSC-BPP series and drop this part when it lands. |
 | QP table + RC offset adjustments | Local carry; not submitted as a standalone upstream series | Split from the DisplayID parser carry using `xr/patches/0007-vesa-dsc-bpp.map.md` and decide whether this is evidence-backed upstream material or host-only risk. |
-| EDID non-desktop quirk for `BIG/0x1234` and `BIG/0x5095` | Absent from current upstream checkout | Submit as a small drm-edid/drm-misc candidate after local validation. |
+| EDID non-desktop quirk for `BIG/0x1234` and `BIG/0x5095` | Absent from current upstream checkout | Follow `xr/patches/bigscreen-beyond-edid.route.md`: capture `non-desktop=1`, regenerate a clean upstream patch, run checkpatch/get_maintainer, and send via the DRM route. |
 | SMI and NUMA posture | Platform/runtime validation, not a linux-xr source patch | Keep kernel config support here; keep validators, tuned profiles, and host captures in Dell-7810/XoxdWM surfaces. |
 | PREEMPT_RT | Mainline since 6.12; this repo still downloads RT patches for the configured 6.19.x RT build lane | Re-evaluate when the RPM lane moves to a kernel whose RT posture is fully mainline for our target release. |
 

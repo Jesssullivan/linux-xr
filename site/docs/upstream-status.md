@@ -23,10 +23,15 @@ Carry order is defined in `xr/patches/series`.
 - `xr/patches/bigscreen-beyond-edid.patch`
   - state: upstream candidate
   - reason: Bigscreen Beyond non-desktop quirk remains absent from upstream `drm_edid.c`
+  - route: `xr/patches/bigscreen-beyond-edid.route.md`
+  - current gate: live `honey` EDID identity is captured for `BIG/0x1234`, but
+    a DRM connector-property capture proving `non-desktop=1` is still missing
+  - patch gate: the carry is GNU-patch usable but `git apply --check` fails, so
+    v1 must be regenerated against current upstream or `drm-misc-next`
 
 ## Current Upstream Snapshot
 
-- linux-xr `xr/main`: `0eba001f6bf2`
+- linux-xr `xr/main`: `2e5d29edc83e`
 - upstream `master` observed from kernel.org: `897d54018cc9`
 - latest upstream tag observed locally: `v7.0`
 - latest `6.19.y` stable tag observed locally: `v6.19.14`
@@ -55,6 +60,27 @@ The latest public DSC-BPP thread found during the 2026-04-25 refresh is v7, not
 the older v6 thread. v7 keeps the same strategic implication for linux-xr:
 parser/connector/amdgpu fixed-BPP handling is upstream-overlap work; QP table
 and RC offset hunks are local-risk carry until separately evidenced.
+
+## Bigscreen Beyond EDID Route
+
+The EDID non-desktop quirk is the first small upstream candidate because it is
+isolated to the DRM EDID quirk table. The current route is:
+
+1. keep GitHub issue #24 and Linear `TIN-612` as the public/internal trackers
+2. capture `honey` headset identity and DRM `non-desktop=1` evidence without
+   restarting services, rebooting, or touching `rke2`
+3. regenerate a clean patch from current upstream or `drm-misc-next`
+4. run `git diff --check`, `scripts/checkpatch.pl`, and a bounded
+   `scripts/get_maintainer.pl --no-git`
+5. send to the DRM EDID/DRM misc route with a human `Signed-off-by`
+6. link the lore thread back to GitHub issue #24 and `TIN-612`
+
+The 2026-04-25 read-only honey probe established `/sys/class/drm/card0-DP-2`
+as connected with a 256-byte EDID whose first 16 bytes include
+`09 27 34 12`, supporting `BIG/0x1234`. It did not prove `non-desktop=1`:
+sysfs did not expose `non_desktop`, `drm_info`, `modetest`, and `edid-decode`
+were missing, unprivileged debugfs state was not readable, and `sudo -n` was
+not available.
 
 ## Kernel Cadence
 
