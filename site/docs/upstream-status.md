@@ -17,13 +17,16 @@ Carry order is defined in `xr/patches/series`.
     absent from the current upstream checkout
   - reduction path: split the DisplayID/parser/connector path from local QP
     table and RC offset adjustments before deciding what still needs submission
+  - current public thread: `[PATCH v7 0/7] VESA DisplayID fixed DSC BPP value support`
+    at <https://patchew.org/linux/20251202110218.9212-1-iam%40lach.pw/>
+  - local split map: `xr/patches/0007-vesa-dsc-bpp.map.md`
 - `xr/patches/bigscreen-beyond-edid.patch`
   - state: upstream candidate
   - reason: Bigscreen Beyond non-desktop quirk remains absent from upstream `drm_edid.c`
 
 ## Current Upstream Snapshot
 
-- linux-xr `xr/main`: `55f63ebff7df`
+- linux-xr `xr/main`: `0eba001f6bf2`
 - upstream `master` observed from kernel.org: `897d54018cc9`
 - latest upstream tag observed locally: `v7.0`
 - latest `6.19.y` stable tag observed locally: `v6.19.14`
@@ -47,6 +50,11 @@ upstream tree is this carry's DisplayID VESA DSC BPP parser and the public DRM
 connector/mode propagation names `dp_dsc_bpp_x16`,
 `DISPLAYID_VESA_DSC_BPP_*`, and `dsc_passthrough_timings_support`. Keep QP/RC
 table changes separate until measured evidence justifies them.
+
+The latest public DSC-BPP thread found during the 2026-04-25 refresh is v7, not
+the older v6 thread. v7 keeps the same strategic implication for linux-xr:
+parser/connector/amdgpu fixed-BPP handling is upstream-overlap work; QP table
+and RC offset hunks are local-risk carry until separately evidenced.
 
 ## Kernel Cadence
 
