@@ -6,7 +6,7 @@ Patch application order is defined in `series`.
 
 Current carry classification:
 
-- `0007-vesa-dsc-bpp.patch`: carry while the DSC fixed-BPP path remains absent upstream; split upstream-tracked DisplayID/amdgpu work from local QP/RC offset adjustments before submission.
+- `0007-vesa-dsc-bpp.patch`: carry with partial upstream overlap; upstream has AMD DSC passthrough plumbing, but this tree still carries the DisplayID/VESA DSC fixed-BPP parser and DRM connector/mode propagation path. Split that parser/connector path from local QP/RC offset adjustments before submission.
 - `bigscreen-beyond-edid.patch`: upstream candidate for the Bigscreen Beyond non-desktop quirk.
 
 The build and release workflows should source patches from here rather than another repo.
