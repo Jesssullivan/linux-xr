@@ -326,10 +326,11 @@ fi
 echo ""
 echo "kernel-xr installed: ${ACTUAL_KREL}"
 echo ""
-echo "For RT/BCI workloads, run the Dell-7810/XoxdWM platform validation lane:"
+echo "For RT/BCI workloads, run the Dell-7810 host validation lane:"
 echo "  - confirm the intended tuned profile is installed and active"
 echo "  - run the repo-owned SMI/latency validator on the target host"
 echo "  - reboot only through the host runbook's rollback-safe path"
+echo "  - use XoxDWM only for downstream XR/runtime benefit validation"
 
 %preun
 KREL=%{kversion}-%{krelease}

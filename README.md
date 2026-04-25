@@ -28,6 +28,17 @@ As of 2026-04-25:
 - RT installer: `https://tinyland-inc.github.io/linux-xr/install/rocky10-rt.sh`
 - Carry patches: [`xr/patches`](xr/patches)
 
+## Host Authority Boundary
+
+This repo owns the kernel carry, RPM build, release, installer, and upstream
+watch surfaces. It does not own live workstation evidence for `honey`.
+
+For the Dell Precision 7810 host lane, keep BIOS, SMI, C-state, NUMA, tuned,
+rollback, and RT acceptance records in the companion `Jesssullivan/Dell-7810`
+repo. `linux-xr` may state which kernel features the RPMs ship, but Dell-owned
+captures decide whether `honey` is prepared for RT, BCI, or downstream XR
+validation.
+
 ## Nix / FlakeHub
 
 This repo now carries a thin flake surface in [`flake.nix`](flake.nix) for
@@ -75,51 +86,22 @@ applies PREEMPT_RT for deterministic scheduling.
 | GPU | AMD Radeon 9070 XT (Navi 48 / RDNA4) |
 | NIC | Intel 82599ES 10GbE (dual SFP+) |
 | Storage | NVMe (CT2000P310SSD8) |
-| BIOS | A02 (2014-09-05) → needs A34 (see below) |
+| BIOS | Host-specific; `honey` BIOS evidence is tracked in `Dell-7810` |
 | VR | Bigscreen Beyond 2e (3840x1920, DSC required for 90Hz) |
 
 ## Deployment checklist
 
-Order of operations for first deployment on a Dell T7810:
+Order of operations for first kernel deployment on a Dell T7810:
 
-### Phase 0: BIOS update (required for RT)
+### Phase 0: Host preflight
 
-- [ ] Download T7810A34.exe from [Dell Support](https://www.dell.com/support/home/en-us/drivers/driversdetails?driverid=8h1nw) (9.54 MB)
-- [ ] Prepare FreeDOS USB: write FD13-LiteUSB.img, copy T7810A34.exe
-- [ ] Prepare recovery USB: FAT32, copy T7810A34.exe renamed to `BIOS_IMG.rcv`
-- [ ] Boot honey from FreeDOS USB (F12 → USB Storage → "Boot to DOS")
-- [ ] Run `T7810A34.EXE` from DOS prompt, let it complete
-- [ ] Verify BIOS version in F2 setup: should show A34
-- [ ] Configure BIOS settings for RT (see below)
-
-#### What A34 gets us (critical for RT)
-
-| Fix | Impact |
-|-----|--------|
-| **Microcode updates** | Fixes TSC-deadline errata on Haswell-EP — prevents timer misfires with PREEMPT_RT |
-| **ACPI table fixes** | 6 years of improvements — fixes HPET exposure, power management, DSDT accuracy |
-| **SMI behavior** | Modern SMI handling — reduces USB Legacy + TCO watchdog interrupt storms |
-| **Security** | Spectre/Meltdown/MDS/TAA mitigations (INTEL-SA-00075, SA-00219, SA-00220) |
-| **F12 BIOS Flash** | Adds one-click BIOS update from boot menu — makes future updates trivial |
-
-#### BIOS settings for RT (after flashing A34)
-
-- [ ] Disable **USB Legacy Support** (prevents SMI storms from EHCI/xHCI emulation)
-- [ ] Disable **C-States beyond C1** (prevents APIC timer wakeup latency)
-- [ ] Disable **Intel SpeedStep / Turbo Boost** (prevents TSC calibration interference)
-- [ ] Enable **HPET** (fallback reference clocksource)
-- [ ] Verify **Boot List Option** = UEFI
-
-#### BIOS update methods (ranked)
-
-| Method | Works on A02? | Risk | Notes |
-|--------|--------------|------|-------|
-| FreeDOS USB | **Yes** | Low | Primary method — boot DOS, run .exe |
-| UEFI Shell + Flash64W.efi | Maybe | Medium | Extract from .exe via `7z x`, boot UEFI shell |
-| F12 BIOS Flash | **No** | N/A | Not available until a newer BIOS is installed |
-| flashrom internal | Possible | Medium | `flashrom -p internal --ifd -i bios -w bios.bin` (ME locked) |
-| SPI hardware flash | Yes | High | CH341A/RPi Pico + SOIC clip — nuclear option |
-| Ctrl+Esc recovery | Emergency | Low | `BIOS_IMG.rcv` on FAT32 USB, hold Ctrl+Esc at power-on |
+- [ ] Confirm the Dell-owned host runbook says the target is ready for this
+      kernel lane.
+- [ ] Confirm the intended fallback kernel remains bootable.
+- [ ] For `honey`, treat RT as gated until the Dell RT contract says C3 is
+      acceptable for regular workstation use.
+- [ ] Keep BIOS, SMI, C-state, NUMA, and tuned validation in `Dell-7810`; do
+      not update this README as the host evidence ledger.
 
 ### Phase 1: Install kernel
 
@@ -127,10 +109,10 @@ Order of operations for first deployment on a Dell T7810:
 - [ ] Generic: `curl -fsSL https://tinyland-inc.github.io/linux-xr/install/rocky10-generic.sh | bash`
 - [ ] RT: `curl -fsSL https://tinyland-inc.github.io/linux-xr/install/rocky10-rt.sh | bash`
 - [ ] `sudo dnf install ./kernel-xr-6.19.5-*.xr.el10.x86_64.rpm`
-- [ ] Generate initramfs: `sudo dracut --force /boot/initramfs-6.19.5-rt1-1.xr.el10.img 6.19.5-rt1-1.xr.el10`
-- [ ] Create BLS boot entry (see [Boot entry setup](#boot-entry-setup))
-- [ ] Set as default: `sudo grubby --set-default /boot/vmlinuz-6.19.5-rt1-1.xr.el10`
-- [ ] Reboot and verify: `uname -r` shows `6.19.5-rt1-1.xr.el10`
+- [ ] Let `kernel-install` create the initramfs and BLS entry, or use the
+      manual fallback below if needed.
+- [ ] Reboot through the host runbook's rollback-safe path.
+- [ ] Verify `uname -r` shows the intended `kernel-xr` lane.
 
 ### Phase 2: Verify display + DSC
 
@@ -146,9 +128,11 @@ Order of operations for first deployment on a Dell T7810:
 - [ ] `just deploy honey all` (compositor + sway-beyond + monado-beyond via nix copy)
 - [ ] `just deploy-verify honey`
 
-## Boot entry setup
+## Boot entry setup fallback
 
-The RPM's `%post` scriptlet uses `grubby --set-default` which requires the kernel to already have a BLS entry. On Rocky 10 with BLS, create the entry manually:
+The RPM normally uses `kernel-install` to orchestrate `depmod`, `dracut`, and
+BLS entry creation. If a target system lacks that path or a recovery procedure
+needs a manual entry, use a host-runbook-reviewed fallback like:
 
 ```bash
 # Generate initramfs
@@ -167,13 +151,14 @@ grub_arg --unrestricted
 grub_class kernel
 EOF
 
-# Set as default
+# Set as default only when the host runbook says this lane is safe to promote.
 sudo grubby --set-default /boot/vmlinuz-6.19.5-rt1-1.xr.el10
 ```
 
 ## RT boot parameters
 
-Required for PREEMPT_RT on Dell T7810 (Haswell-EP / C610):
+Kernel parameters used by the Dell T7810 host runbook for PREEMPT_RT on
+Haswell-EP / C610 systems:
 
 | Parameter | Purpose |
 |-----------|---------|
@@ -207,13 +192,13 @@ Serial console (T7810 has internal 9-pin "SERIAL1" header): `earlyprintk=serial,
 
 ### RT fallback (if PREEMPT_RT cannot boot)
 
-Rebuild without `CONFIG_PREEMPT_RT`. Use `PREEMPT_DYNAMIC` with boot params:
+Use the generic `kernel-xr` lane with `PREEMPT_DYNAMIC` and boot params:
 
 ```
 preempt=full threadirqs
 ```
 
-This gives ~90% of RT latency benefit:
+This is a fallback posture, not a substitute for measured PREEMPT_RT evidence:
 - Threaded IRQ handlers (same mechanism as RT)
 - Full kernel preemption at all preemption points
 - No sleeping spinlock conversion (the part that causes boot issues)
