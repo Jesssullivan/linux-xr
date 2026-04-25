@@ -36,5 +36,5 @@ until measured evidence justifies submitting or retaining them.
 5. Before changing `xr/patches/series`, run `nix flake check` and a real RPM build lane.
 
 The local-risk group should not be described as upstreamable until the repo
-links measured evidence for the Beyond path and a concrete upstream discussion
-or drop decision.
+links measured evidence for the DSC QP/RC path, such as headset or display-link
+capture, and a concrete upstream discussion or drop decision.
