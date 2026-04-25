@@ -93,6 +93,15 @@
             bash -n "${self}/xr/scripts/generate-cadence-report.sh"
             mkdir -p "$out"
           '';
+
+          patch-application = pkgs.runCommand "linux-xr-patch-application-check" {
+            nativeBuildInputs = with pkgs; [ bash patch ];
+          } ''
+            set -euo pipefail
+            patch -d "${self}" -p1 --dry-run < "${self}/xr/patches/0007-vesa-dsc-bpp.patch"
+            patch -d "${self}" -p1 --dry-run < "${self}/xr/patches/bigscreen-beyond-edid.patch"
+            mkdir -p "$out"
+          '';
         });
 
       apps = forAllSystems (system:
@@ -104,7 +113,7 @@
             text = ''
               set -euo pipefail
               repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-              exec "$repo_root/xr/scripts/generate-cadence-report.sh" "$@"
+              exec bash "$repo_root/xr/scripts/generate-cadence-report.sh" "$@"
             '';
           };
         in
