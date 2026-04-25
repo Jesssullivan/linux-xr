@@ -10,28 +10,23 @@ EDID manufacturer code: "BIG" (PnP ID 0x0927)
 - Product 0x5095: Bigscreen Beyond 2e
 
 Ref: https://www.phoronix.com/news/Linux-Bigscreen-Beyond-VR
-Ref: https://www.mail-archive.com/dri-devel@lists.freedesktop.org/msg493878.html
+Link: https://lore.kernel.org/dri-devel/20240517105555.654262-1-contact@scrumplex.net/
 ---
- drivers/gpu/drm/drm_edid.c | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ drivers/gpu/drm/drm_edid.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
 --- a/drivers/gpu/drm/drm_edid.c
 +++ b/drivers/gpu/drm/drm_edid.c
 @@ -220,6 +220,10 @@ static const struct edid_quirk {
--	EDID_QUIRK('V', 'L', 'V', 0x91be, BIT(EDID_QUIRK_NON_DESKTOP)),
--	EDID_QUIRK('V', 'L', 'V', 0x91bf, BIT(EDID_QUIRK_NON_DESKTOP)),
+ 	EDID_QUIRK('V', 'L', 'V', 0x91be, BIT(EDID_QUIRK_NON_DESKTOP)),
+ 	EDID_QUIRK('V', 'L', 'V', 0x91bf, BIT(EDID_QUIRK_NON_DESKTOP)),
 -
-+	EDID_QUIRK('V', 'L', 'V', 0x91be, BIT(EDID_QUIRK_NON_DESKTOP)),
-+	EDID_QUIRK('V', 'L', 'V', 0x91bf, BIT(EDID_QUIRK_NON_DESKTOP)),
 +
 +	/* Bigscreen Beyond VR Headsets */
 +	EDID_QUIRK('B', 'I', 'G', 0x1234, BIT(EDID_QUIRK_NON_DESKTOP)),
 +	EDID_QUIRK('B', 'I', 'G', 0x5095, BIT(EDID_QUIRK_NON_DESKTOP)),
 +
--	/* HTC Vive and Vive Pro VR Headsets */
--	EDID_QUIRK('H', 'V', 'R', 0xaa01, BIT(EDID_QUIRK_NON_DESKTOP)),
--	EDID_QUIRK('H', 'V', 'R', 0xaa02, BIT(EDID_QUIRK_NON_DESKTOP)),
-+	/* HTC Vive and Vive Pro VR Headsets */
-+	EDID_QUIRK('H', 'V', 'R', 0xaa01, BIT(EDID_QUIRK_NON_DESKTOP)),
-+	EDID_QUIRK('H', 'V', 'R', 0xaa02, BIT(EDID_QUIRK_NON_DESKTOP)),
+ 	/* HTC Vive and Vive Pro VR Headsets */
+ 	EDID_QUIRK('H', 'V', 'R', 0xaa01, BIT(EDID_QUIRK_NON_DESKTOP)),
+ 	EDID_QUIRK('H', 'V', 'R', 0xaa02, BIT(EDID_QUIRK_NON_DESKTOP)),
