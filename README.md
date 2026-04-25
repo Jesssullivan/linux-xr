@@ -8,16 +8,17 @@ Fork of `torvalds/linux` with CI-built RPMs carrying VR/XR patches.
 
 ## Current State
 
-As of 2026-04-11:
+As of 2026-04-25:
 
 | Area | Status | Notes |
 | --- | --- | --- |
 | Release artifacts | Proven | Latest public release ships generic and RT RPMs. |
-| `honey` rollout | Proven (generic) | `honey` is currently running `6.19.5-5.xr.el10`. |
-| `honey` RT default boot | Gated | RT artifacts exist, but RT is not yet the default documented lane. |
-| `yoga` rollout | Pending | `yoga` is still on the stock Rocky 10 kernel. |
-| Install surface | In progress | GitHub Pages and stable installer paths live in `site/`. |
+| `honey` rollout | Proven (generic) | `honey` is persistently defaulted to the generic XR kernel lane. |
+| `honey` RT boot | Reboot-valid, gated | One-time RT boot and `/sys/kernel/realtime=1` verification succeeded; regular use still needs latency and XR smoke. |
+| `yoga` rollout | Proven one-time generic boot | Generic XR RPM install and one-time boot succeeded; stock Rocky remains the persistent fallback. |
+| Install surface | Active | GitHub Pages and stable installer paths live in `site/`. |
 | Patch carry set | Localized | Kernel-owned carry patches live under `xr/patches/`. |
+| Local checkout requirement | Case-sensitive | Linux source checkouts must be on Linux or a case-sensitive filesystem; macOS case-insensitive checkouts corrupt case-distinct kernel paths. |
 
 ## Public Surfaces
 
@@ -277,6 +278,8 @@ ssh jess@honey "cat /boot/config-$(uname -r)" > xr/config/base.config
   --rt-version 6.19.3-rt1
 ```
 
+Use a Linux or case-sensitive checkout for source truth. On macOS, do not treat a default case-insensitive checkout as authoritative for kernel files because Linux carries case-distinct paths such as `xt_DSCP.c` and `xt_dscp.c`.
+
 ## CI
 
 Tag push (`v6.19.5-xr2`) or manual dispatch triggers RPM builds on
@@ -305,7 +308,7 @@ Build optimizations:
 ## Kernel upgrade workflow
 
 1. Review the weekly cadence issue opened by `.github/workflows/weekly-cadence.yml`
-2. Merge or rebase onto the latest upstream Linux commit that still keeps the carry set clean
+2. Compare against current upstream and stable refs before choosing a merge target
 3. Update `xr/config/base.config` if `honey`'s running base kernel changes
 4. Tag: `git tag -a v6.20.1-xr1 -m "XR kernel 6.20.1"`
 5. CI builds + publishes RPMs
@@ -313,11 +316,14 @@ Build optimizations:
 
 ## Upstream status
 
-| Patch | Upstream status | ETA |
+As of 2026-04-25, `xr/main` is on `55f63ebff7df`. Kernel.org has advanced beyond this repo's `origin/master` snapshot: upstream `master` was observed at `27d128c1cff6`, `v7.0` exists, and stable `v6.19.14` exists. The RPM lane still builds the configured `6.19.5` tarball until the cadence item deliberately moves it.
+
+| Patch/workstream | Upstream status | Next action |
 |-------|----------------|-----|
-| VESA DisplayID DSC BPP (Bolyukin v7) | Reviewed, NOT merged — missed 7.0 window | ~7.1 (June 2026) |
-| QP table + RC offset (raika-xino) | Never submitted | Needs amd-gfx submission |
-| EDID non_desktop quirk (BIG/0x1234) | Not submitted | Submit to drm-misc |
-| PREEMPT_RT | Mainline since 6.12 | N/A |
+| VESA DisplayID DSC BPP parser / amdgpu handling | In-flight upstream series; not present in current upstream checkout | Track Bolyukin fixed-DSC-BPP series and drop this part when it lands. |
+| QP table + RC offset adjustments | Local carry; not submitted as a standalone upstream series | Split from the DisplayID parser carry and decide whether this is evidence-backed upstream material or host-only risk. |
+| EDID non-desktop quirk for `BIG/0x1234` and `BIG/0x5095` | Absent from current upstream checkout | Submit as a small drm-edid/drm-misc candidate after local validation. |
+| SMI and NUMA posture | Platform/runtime validation, not a linux-xr source patch | Keep kernel config support here; keep validators, tuned profiles, and host captures in Dell-7810/XoxdWM surfaces. |
+| PREEMPT_RT | Mainline since 6.12; this repo still downloads RT patches for the configured 6.19.x RT build lane | Re-evaluate when the RPM lane moves to a kernel whose RT posture is fully mainline for our target release. |
 
 Carry patch order is defined in `xr/patches/series`.

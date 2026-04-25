@@ -6,7 +6,7 @@ title: honey
 
 Role: primary XR validation host.
 
-Current known state from the 2026-04-12 rollout:
+Historical rollout evidence from the 2026-04-12 validation:
 
 - running kernel: `6.19.5-7.xr.el10`
 - saved default boot kernel: `/boot/vmlinuz-6.19.5-7.xr.el10`
@@ -20,7 +20,13 @@ Current known state from the 2026-04-12 rollout:
 - DRM nodes present on both the generic and RT validation boots
 - sudo requires an interactive password on this host
 
-Current rollout stance:
+Current live host posture is not owned by this page. Dell-7810 is the authority
+for `honey`'s current booted kernel, BIOS/SMI state, tuned profile, and reset
+evidence. Treat the RT bullets above as historical smoke evidence, not as a
+claim that `honey` is currently running RT or has a validated low-latency
+posture.
+
+Rollout stance:
 
 - generic XR kernel: active, documented, and the persistent default
-- RT XR kernel: reboot-valid and functionally verified, but still gated for regular use pending latency tooling and deeper XR smoke
+- RT XR kernel: one-time reboot-valid and functionally verified, but still gated for regular use pending latency tooling and deeper XR smoke

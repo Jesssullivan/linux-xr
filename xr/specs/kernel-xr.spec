@@ -326,10 +326,10 @@ fi
 echo ""
 echo "kernel-xr installed: ${ACTUAL_KREL}"
 echo ""
-echo "For RT/BCI workloads, install the xr-bci tuned profile:"
-echo "  sudo tuned-adm profile xr-bci"
-echo "  sudo reboot"
-echo "Validate: sudo smi-validate --full"
+echo "For RT/BCI workloads, run the Dell-7810/XoxdWM platform validation lane:"
+echo "  - confirm the intended tuned profile is installed and active"
+echo "  - run the repo-owned SMI/latency validator on the target host"
+echo "  - reboot only through the host runbook's rollback-safe path"
 
 %preun
 KREL=%{kversion}-%{krelease}
