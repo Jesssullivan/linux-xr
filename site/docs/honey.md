@@ -27,7 +27,7 @@ Current known supplier-side state:
 - saved default boot kernel: `/boot/vmlinuz-6.19.5-7.xr.el10`
 - installed generic XR runtime RPM: `kernel-xr-6.19.5-7.xr.el10`
 - installed RT XR runtime RPM: `kernel-xr-rt-6.19.5-8.xr.el10`
-- one-time RT boot into `6.19.5-rt1-8.xr.el10` succeeded
+- RT boot into `6.19.5-rt1-8.xr.el10` succeeded
 - live RT verification on `honey` confirmed `uname -v` contains `PREEMPT_RT` and `/sys/kernel/realtime` is `1`
 - normal reboot after the RT test returned the host to the saved generic default as expected
 - OpenXR userspace present
@@ -44,10 +44,10 @@ posture.
 Rollout stance:
 
 - generic XR kernel: active, documented, and the persistent default
-- RT XR kernel: one-time reboot-valid and functionally verified, but still gated for regular use pending latency tooling and deeper XR smoke
+- RT XR kernel: reboot-valid and functionally verified, but still gated for regular use. Dell's repeated host packet is cautionary rather than improved, so regular RT use needs a downstream deadline packet, not only kernel boot proof.
 
 For live `honey` host state and current RT acceptance, see:
 
 - <https://github.com/Jesssullivan/Dell-7810/blob/main/docs/platform/rt-research-contract.md>
-- <https://github.com/Jesssullivan/Dell-7810/blob/main/docs/platform/honey-rt-validation-2026-04-23.md>
+- <https://github.com/Jesssullivan/Dell-7810/blob/main/docs/publication/rt-benefit-decision-framework-2026-04-26.md>
 - <https://github.com/Jesssullivan/Dell-7810/blob/main/docs/tracking/rt-smi-numa-chapel-focus-2026-04-25.md>

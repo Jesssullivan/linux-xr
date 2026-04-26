@@ -14,7 +14,7 @@ As of 2026-04-25:
 | --- | --- | --- |
 | Release artifacts | Proven | Latest public release ships generic and RT RPMs. |
 | `honey` rollout | Proven (generic) | `honey` is persistently defaulted to the generic XR kernel lane. |
-| `honey` RT boot | Reboot-valid, gated | One-time RT boot and `/sys/kernel/realtime=1` verification succeeded; regular use still needs latency and XR smoke. |
+| `honey` RT boot | Reboot-valid, gated | RT boot and `/sys/kernel/realtime=1` verification succeeded; Dell's repeated host packet is cautionary, so regular use still needs downstream deadline evidence. |
 | `yoga` rollout | Proven one-time generic boot | Generic XR RPM install and one-time boot succeeded; stock Rocky remains the persistent fallback. |
 | Install surface | Active | GitHub Pages and stable installer paths live in `site/`. |
 | Patch carry set | Localized | Kernel-owned carry patches live under `xr/patches/`. |
@@ -62,7 +62,11 @@ The real RPM release lane remains [`build-kernel.yml`](.github/workflows/build-k
 
 Patches are maintained in this repository under [`xr/patches`](xr/patches).
 
-RT opinions come primarily from very large AD/DA and related busses used for sensors on BCI server (~100:100 channels of carefully clocked I/O; uses external C777 sample wordclock).
+RT motivation comes from possible deadline-sensitive workloads: AD/DA and
+sensor I/O for the BCI server, audio periods/xruns, and XR compositor frame
+timing. Those are hypotheses, not supplier-side claims. Dell-7810 currently
+owns the measured host stance: generic remains the default operating lane, and
+RT remains gated until a downstream packet proves a concrete benefit.
 
 ## Variants
 
@@ -71,10 +75,12 @@ Each release includes two kernel variants:
 | Variant | Package | Use case |
 |---------|---------|----------|
 | **Generic** | `kernel-xr` | Standard XR workloads, desktop compositing |
-| **RT** | `kernel-xr-rt` | Sub-ms VR frame scheduling, BCI/AD-DA I/O |
+| **RT** | `kernel-xr-rt` | Experimental lane for measured scheduler, IRQ, audio, BCI, or XR deadline tests |
 
 Both variants include the DSC and EDID patches. The RT variant additionally
-applies PREEMPT_RT for deterministic scheduling.
+applies PREEMPT_RT to expose realtime preemption semantics. Do not describe it
+as a proven performance or latency improvement for `honey` until Dell and the
+downstream consumer repo have matching evidence.
 
 ## Target hardware
 
@@ -105,7 +111,8 @@ availability, install flow, and kernel carry status.
       kernel lane.
 - [ ] Confirm the intended fallback kernel remains bootable.
 - [ ] For `honey`, treat RT as gated until the Dell RT contract says C3 is
-      acceptable for regular workstation use.
+      acceptable for regular workstation use and a downstream C4 packet proves
+      an actual benefit.
 - [ ] Keep BIOS, SMI, C-state, NUMA, and tuned validation in `Dell-7810`; do
       not update this README as the host evidence ledger.
 

@@ -27,7 +27,8 @@ For non-root validation or staged rollout work, both scripts also support:
 ## Variants
 
 - `generic`: default documented rollout lane for Rocky 10 hosts
-- `rt`: gated lane for hosts that have passed the RT boot and latency checklist
+- `rt`: gated lane for hosts that have passed the RT boot checklist and have a
+  specific downstream deadline hypothesis to test
 
 ## Notes
 
