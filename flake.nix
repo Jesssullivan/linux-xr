@@ -93,6 +93,7 @@
             set -euo pipefail
             bash -n "${self}/xr/scripts/build-rpm.sh"
             bash -n "${self}/xr/scripts/generate-cadence-report.sh"
+            bash -n "${self}/xr/scripts/check-cve-2026-31431-live.sh"
             mkdir -p "$out"
           '';
 

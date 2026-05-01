@@ -251,6 +251,13 @@ For a no-build check of the active route:
 ./xr/scripts/build-rpm.sh --kernel-version 6.19.5 --xr-release 9 --security-preflight-only
 ```
 
+For a read-only check of a running host:
+
+```bash
+./xr/scripts/check-cve-2026-31431-live.sh
+ssh honey 'bash -s' < ./xr/scripts/check-cve-2026-31431-live.sh
+```
+
 ## Kernel upgrade workflow
 
 1. Review the weekly cadence issue opened by `.github/workflows/weekly-cadence.yml`
