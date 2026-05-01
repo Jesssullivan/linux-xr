@@ -95,6 +95,7 @@
             bash -n "${self}/xr/scripts/generate-cadence-report.sh"
             bash -n "${self}/xr/scripts/check-cve-2026-31431-live.sh"
             bash -n "${self}/xr/scripts/check-security-config.sh"
+            bash -n "${self}/xr/scripts/check-kernel-carry.sh"
             mkdir -p "$out"
           '';
 

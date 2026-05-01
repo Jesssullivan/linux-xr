@@ -262,6 +262,17 @@ The live checker treats `initcall_blacklist=algif_aead_init` as the narrow
 preferred boot mitigation and also recognizes the broader Red Hat-documented
 `af_alg_init` and `crypto_authenc_esn_module_init` initcall blacklists.
 
+## Known Patched CVEs
+
+Release-blocking security backports live in
+[`xr/security`](xr/security), with source and build-route details in
+[`xr/security/README.md`](xr/security/README.md). Keep this table in sync when
+adding, dropping, or upstreaming a repo-managed CVE patch.
+
+| CVE | Public name | linux-xr status | Repo links | External references |
+| --- | --- | --- | --- | --- |
+| CVE-2026-31431 | Copy Fail / `algif_aead` AF_ALG local privilege escalation | Patched in `v6.19.5-xr9` by carrying the stable `6.19.y` backport on top of the vulnerable `6.19.5` base; fixed natively by upstream `6.19.12+` and `7.0+` bases | [`xr/security/cve-2026-31431-algif-aead.patch`](xr/security/cve-2026-31431-algif-aead.patch), [`xr/scripts/build-rpm.sh`](xr/scripts/build-rpm.sh), [`xr/scripts/check-cve-2026-31431-live.sh`](xr/scripts/check-cve-2026-31431-live.sh), [`v6.19.5-xr9`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr9) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-31431), [Red Hat RHSB-2026-02](https://access.redhat.com/security/vulnerabilities/RHSB-2026-02), [Copy Fail](https://copy.fail/) |
+
 ## SELinux and Security Config
 
 `linux-xr` is expected to preserve the Rocky/RHEL SELinux security contract:
@@ -287,15 +298,35 @@ drift fails before an RPM can be accepted.
 
 ## Upstream status
 
-As of 2026-04-30, the latest published linux-xr release is still
-`v6.19.5-xr8`. Do not promote that line until CVE-2026-31431 is resolved by
-moving to at least `6.19.12` or by releasing a newly built artifact with the
-repo-managed backport. Kernel.org stable `6.19.y` contains the CVE fix as
-`ce42ee423e58`, corresponding to the mainline fix `a664bf3d603d`.
+As of 2026-05-01, the latest published secured linux-xr lab release is
+[`v6.19.5-xr9`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr9).
+It keeps the `6.19.5` lab base but carries the repo-managed
+[`CVE-2026-31431`](#known-patched-cves) backport. Kernel.org stable `6.19.y`
+contains the native fix as `ce42ee423e58`, corresponding to the mainline fix
+`a664bf3d603d`; issue
+[#37](https://github.com/tinyland-inc/linux-xr/issues/37) tracks rebasing the
+lab line to the latest suitable `6.19.y` base and triaging all carry patches.
+
+Current ingestion checkpoint:
+
+- Generic `6.19.14` is the next viable stable-base proof target: the XR carry
+  patches in [`xr/patches/series`](xr/patches/series) dry-run cleanly against
+  the `linux-6.19.14` tarball.
+- RT cannot move to `6.19.14` with the current `6.19.3-rt1` patchset: that RT
+  patch fails to dry-run against `6.19.14` in the `8250_port.c` serial driver
+  path. Keep the current RT artifact line on `v6.19.5-xr9` until a compatible
+  RT patchset or local RT refresh is proven.
+- Use [`xr/scripts/check-kernel-carry.sh`](xr/scripts/check-kernel-carry.sh) to
+  repeat this check before bumping build defaults or tagging a release.
+
+```bash
+./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14
+./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14 --rt-version 6.19.3-rt1
+```
 
 | Patch/workstream | Upstream status | Next action |
 |-------|----------------|-----|
-| CVE-2026-31431 / `algif_aead` | Fixed upstream in `7.0` and stable `6.19.12`; current published XR artifacts are `6.19.5`; this repo now carries the `6.19.y` backport for new builds | Rebuild `6.19.5` with the backport or move to a fixed base before promotion. |
+| CVE-2026-31431 / Copy Fail / `algif_aead` | Fixed upstream in `7.0` and stable `6.19.12`; `v6.19.5-xr9` carries the `6.19.y` backport on the current `6.19.5` lab base | Boot/install validate `xr9` on lab hosts, then rebase to latest suitable `6.19.y` under issue #37. |
 | VESA DisplayID DSC BPP parser / amdgpu handling | In-flight upstream series; not present in current upstream checkout | Track Bolyukin v7 fixed-DSC-BPP series and drop this part when it lands. |
 | QP table + RC offset adjustments | Local carry; not submitted as a standalone upstream series | Split from the DisplayID parser carry using `xr/patches/0007-vesa-dsc-bpp.map.md` and decide whether this is evidence-backed upstream material or host-only risk. |
 | EDID non-desktop quirk for `BIG/0x1234` and `BIG/0x5095` | Absent from current upstream checkout | Follow `xr/patches/bigscreen-beyond-edid.route.md`: local `BIG/0x1234` evidence now proves `non-desktop=1`; next regenerate an upstream/drm-misc topic patch and send via the DRM route. |
