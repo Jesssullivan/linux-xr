@@ -100,6 +100,86 @@ cve_2026_31431_status() {
         return
     fi
 
+    if (( major == 6 && minor >= 13 && minor <= 17 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 6 && minor == 12 )); then
+        if (( patch >= 85 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 6 && minor >= 7 && minor <= 11 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 6 && minor == 6 )); then
+        if (( patch >= 137 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 6 && minor >= 2 && minor <= 5 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 6 && minor == 1 )); then
+        if (( patch >= 170 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 6 && minor == 0 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 5 && minor >= 16 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 5 && minor == 15 )); then
+        if (( patch >= 204 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 5 && minor >= 11 && minor <= 14 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 5 && minor == 10 )); then
+        if (( patch >= 254 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( (major == 4 && minor >= 14) || (major == 5 && minor <= 9) )); then
+        echo "vulnerable"
+        return
+    fi
+
     echo "unknown"
 }
 
@@ -132,7 +212,8 @@ enforce_cve_2026_31431_gate() {
                 echo "WARNING: this must be limited to explicit forensic or backport-validation work."
             else
                 echo "ERROR: refusing to build ${KERNEL_VERSION}; it is in the known CVE-2026-31431 vulnerable range." >&2
-                echo "ERROR: use 6.19.12+, 6.18.22+, 7.0+, or add a repo-managed backport for this base." >&2
+                echo "ERROR: use a known fixed upstream floor or add a repo-managed backport for this base." >&2
+                echo "ERROR: known fixed floors include 5.10.254+, 5.15.204+, 6.1.170+, 6.6.137+, 6.12.85+, 6.18.22+, 6.19.12+, and 7.0+." >&2
                 echo "ERROR: set LINUX_XR_ALLOW_CVE_2026_31431=1 only for explicit validation." >&2
                 exit 1
             fi
