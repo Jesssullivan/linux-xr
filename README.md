@@ -18,6 +18,7 @@ As of 2026-04-25:
 | `yoga` rollout | Proven one-time generic boot | Generic XR RPM install and one-time boot succeeded; stock Rocky remains the persistent fallback. |
 | Install surface | Active | GitHub Pages and stable installer paths live in `site/`. |
 | Patch carry set | Localized | Kernel-owned carry patches live under `xr/patches/`. |
+| Build source | Tarball-based | RPMs are built from kernel.org `linux-${KERNEL_VERSION}.tar.xz` plus this repo's config, spec, carry patches, and security backports; the checked-out kernel source tree is not currently the RPM source input. |
 | Local checkout requirement | Case-sensitive | Linux source checkouts must be on Linux or a case-sensitive filesystem; macOS case-insensitive checkouts corrupt case-distinct kernel paths. |
 
 ## Public Surfaces
@@ -38,6 +39,27 @@ rollback, and RT acceptance records in the companion `Jesssullivan/Dell-7810`
 repo. `linux-xr` may state which kernel features the RPMs ship, but Dell-owned
 captures decide whether `honey` is prepared for RT, BCI, or downstream XR
 validation.
+
+## Build Source Boundary
+
+`linux-xr` currently has two source surfaces:
+
+- Release builds use [`xr/scripts/build-rpm.sh`](xr/scripts/build-rpm.sh) to
+  download the selected kernel.org tarball, apply repo-managed security
+  backports, apply [`xr/patches/series`](xr/patches/series), apply optional RT,
+  and build RPMs from the resulting source tree.
+- The checked-out kernel source tree remains useful for upstream comparison and
+  patch development, but it is not the source tree compiled by the RPM workflow
+  until a source-sync branch explicitly makes it so.
+
+As of 2026-05-01, `xr/main`'s checked-out kernel `Makefile` reports `7.0-rc3`
+while the active lab RPM line is `6.19.x`. GitHub also reports `xr/main` as
+diverged from `torvalds/linux:master` by `82` local commits and `16414`
+upstream commits. Treat that as source-sync debt, not as evidence that a
+published RPM skipped its configured tarball input. For the current lab line,
+use issue [#37](https://github.com/tinyland-inc/linux-xr/issues/37) to rebase a
+dedicated source-sync branch to the selected stable target, replay linux-xr
+carry, and only then change build defaults or release tags.
 
 ## Nix / FlakeHub
 
