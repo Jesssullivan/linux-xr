@@ -262,6 +262,19 @@ The live checker treats `initcall_blacklist=algif_aead_init` as the narrow
 preferred boot mitigation and also recognizes the broader Red Hat-documented
 `af_alg_init` and `crypto_authenc_esn_module_init` initcall blacklists.
 
+## SELinux and Security Config
+
+`linux-xr` is expected to preserve the Rocky/RHEL SELinux security contract:
+SELinux is built in, selected as the default security module, backed by audit
+and filesystem security-label support, and accompanied by lockdown, Yama,
+Landlock, BPF LSM, IMA, EVM, module signatures, and the existing hardening
+defaults.
+
+The reusable guard is [`xr/scripts/check-security-config.sh`](xr/scripts/check-security-config.sh).
+It is run by `nix flake check` against [`xr/config/base.config`](xr/config/base.config)
+and by the RPM build against the post-`olddefconfig` `.config`, so kernel config
+drift fails before an RPM can be accepted.
+
 ## Kernel upgrade workflow
 
 1. Review the weekly cadence issue opened by `.github/workflows/weekly-cadence.yml`

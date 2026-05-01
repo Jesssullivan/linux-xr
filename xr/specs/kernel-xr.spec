@@ -34,6 +34,7 @@ URL:            https://github.com/tinyland-inc/linux-xr
 
 Source0:        linux-%{kversion}.tar.xz
 Source1:        base.config
+Source2:        check-security-config.sh
 
 # XR patches (fetched by build-rpm.sh into SOURCES/)
 Patch0:         0007-vesa-dsc-bpp.patch
@@ -243,6 +244,8 @@ if [ "$fail" -ne 0 ]; then
     echo "This kernel would fail to boot on systemd 257 (Rocky 10.1)."
     exit 1
 fi
+
+bash %{SOURCE2} .config
 
 # Capture the actual kernel release string (includes -rt1 if RT patched)
 KREL=$(make -s kernelrelease)

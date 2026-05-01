@@ -18,6 +18,7 @@ XR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PATCH_DIR="${XR_DIR}/patches"
 SERIES_FILE="${PATCH_DIR}/series"
 SECURITY_DIR="${XR_DIR}/security"
+SECURITY_CONFIG_CHECK="${XR_DIR}/scripts/check-security-config.sh"
 CVE_2026_31431_PATCH="cve-2026-31431-algif-aead.patch"
 APPLY_CVE_2026_31431_PATCH=0
 
@@ -257,6 +258,11 @@ else
 fi
 
 # --- Step 6: Copy spec ---
+if [[ ! -f "${SECURITY_CONFIG_CHECK}" ]]; then
+    echo "ERROR: ${SECURITY_CONFIG_CHECK} not found."
+    exit 1
+fi
+install -m 0755 "${SECURITY_CONFIG_CHECK}" "${RPMBUILD}/SOURCES/check-security-config.sh"
 cp "${XR_DIR}/specs/kernel-xr.spec" "${RPMBUILD}/SPECS/"
 
 # --- Step 7: Skip separate patch test (rpmbuild applies patches in %prep) ---

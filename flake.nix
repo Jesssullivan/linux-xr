@@ -94,6 +94,15 @@
             bash -n "${self}/xr/scripts/build-rpm.sh"
             bash -n "${self}/xr/scripts/generate-cadence-report.sh"
             bash -n "${self}/xr/scripts/check-cve-2026-31431-live.sh"
+            bash -n "${self}/xr/scripts/check-security-config.sh"
+            mkdir -p "$out"
+          '';
+
+          security-config = pkgs.runCommand "linux-xr-security-config-check" {
+            nativeBuildInputs = with pkgs; [ bash coreutils gnugrep ];
+          } ''
+            set -euo pipefail
+            bash "${self}/xr/scripts/check-security-config.sh" "${self}/xr/config/base.config"
             mkdir -p "$out"
           '';
 
