@@ -20,6 +20,7 @@ UPSTREAM_REF=""
 STABLE_REF=""
 OUTPUT="-"
 MAX_COMMITS=10
+PATCH_TRIAGE=1
 
 usage() {
     cat <<'EOF'
@@ -31,6 +32,7 @@ Options:
   --stable-ref REF     Stable Linux ref to compare against
   --output PATH        Output markdown file ('-' for stdout)
   --max-commits N      Number of commits to show per section (default: 10)
+  --skip-patch-triage  Do not create temporary worktrees to test patch application
   --help               Show this help
 EOF
 }
@@ -42,6 +44,7 @@ while [[ $# -gt 0 ]]; do
         --stable-ref) STABLE_REF="$2"; shift 2 ;;
         --output) OUTPUT="$2"; shift 2 ;;
         --max-commits) MAX_COMMITS="$2"; shift 2 ;;
+        --skip-patch-triage) PATCH_TRIAGE=0; shift ;;
         --help) usage; exit 0 ;;
         *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
     esac
@@ -77,6 +80,86 @@ carry_rows() {
         echo "| ${idx} | \`${patch}\` |"
         idx=$((idx + 1))
     done < "${SERIES_FILE}"
+}
+
+markdown_cell() {
+    local value="$1"
+
+    value="${value//$'\n'/ }"
+    value="${value//|/\\|}"
+    echo "${value}"
+}
+
+series_patch_count() {
+    if [[ ! -f "${SERIES_FILE}" ]]; then
+        echo 0
+        return
+    fi
+
+    grep -Ev '^[[:space:]]*($|#)' "${SERIES_FILE}" | wc -l | tr -d ' '
+}
+
+series_apply_status() {
+    local label="$1"
+    local ref="$2"
+    local worktree
+    local err_file
+    local patch
+    local count=0
+    local status="clean"
+    local detail
+
+    if [[ -z "${ref}" ]] || ! has_ref "${ref}"; then
+        echo "| ${label} | \`${ref:-unavailable}\` | \`unavailable\` | ref unavailable |"
+        return
+    fi
+
+    if [[ ! -f "${SERIES_FILE}" ]]; then
+        echo "| ${label} | \`${ref}\` | \`unavailable\` | series missing |"
+        return
+    fi
+
+    worktree="$(mktemp -d)"
+    err_file="$(mktemp)"
+
+    if ! git worktree add --detach --quiet "${worktree}" "${ref}" >"${err_file}" 2>&1; then
+        detail="$(head -n 1 "${err_file}")"
+        rm -rf "${worktree}" "${err_file}"
+        echo "| ${label} | \`${ref}\` | \`unavailable\` | $(markdown_cell "${detail:-worktree checkout failed}") |"
+        return
+    fi
+
+    if [[ "$(git -C "${worktree}" config --bool core.sparseCheckout || true)" == "true" ]]; then
+        detail="checkout is sparse; kernel source paths are unavailable"
+        git worktree remove --force "${worktree}" >/dev/null 2>&1 || rm -rf "${worktree}"
+        rm -f "${err_file}"
+        echo "| ${label} | \`${ref}\` | \`unavailable\` | $(markdown_cell "${detail}") |"
+        return
+    fi
+
+    while IFS= read -r patch; do
+        [[ -z "${patch}" || "${patch}" =~ ^[[:space:]]*# ]] && continue
+        count=$((count + 1))
+        if ! git -C "${worktree}" apply --check "${PATCH_DIR}/${patch}" >"${err_file}" 2>&1; then
+            status="conflict"
+            detail="${patch}: $(head -n 1 "${err_file}")"
+            break
+        fi
+        if ! git -C "${worktree}" apply "${PATCH_DIR}/${patch}" >"${err_file}" 2>&1; then
+            status="conflict"
+            detail="${patch}: $(head -n 1 "${err_file}")"
+            break
+        fi
+    done < "${SERIES_FILE}"
+
+    if [[ "${status}" == "clean" ]]; then
+        detail="${count}/$(series_patch_count) patches apply in series order"
+    fi
+
+    git worktree remove --force "${worktree}" >/dev/null 2>&1 || rm -rf "${worktree}"
+    rm -f "${err_file}"
+
+    echo "| ${label} | \`${ref}\` | \`${status}\` | $(markdown_cell "${detail}") |"
 }
 
 default_kernel_version() {
@@ -268,6 +351,18 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo
     echo "Known fixed floors for this gate: \`6.19.12+\`, \`6.18.22+\`, and \`7.0+\`."
     echo "For vulnerable \`6.19.x\` bases, \`build-rpm.sh\` applies the repo backport when present."
+    echo
+    echo "## Carry Apply Triage"
+    echo
+    echo "| Target | Ref | Status | Detail |"
+    echo "| --- | --- | --- | --- |"
+    if [[ "${PATCH_TRIAGE}" == "1" ]]; then
+        series_apply_status "base" "${BASE_REF}"
+        series_apply_status "upstream" "${UPSTREAM_REF}"
+        series_apply_status "stable" "${STABLE_REF}"
+    else
+        echo "| all | n/a | \`skipped\` | patch triage disabled |"
+    fi
     echo
     echo "## Stable Summary"
     echo
