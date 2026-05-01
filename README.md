@@ -258,6 +258,10 @@ For a read-only check of a running host:
 ssh honey 'bash -s' < ./xr/scripts/check-cve-2026-31431-live.sh
 ```
 
+The live checker treats `initcall_blacklist=algif_aead_init` as the narrow
+preferred boot mitigation and also recognizes the broader Red Hat-documented
+`af_alg_init` and `crypto_authenc_esn_module_init` initcall blacklists.
+
 ## Kernel upgrade workflow
 
 1. Review the weekly cadence issue opened by `.github/workflows/weekly-cadence.yml`
