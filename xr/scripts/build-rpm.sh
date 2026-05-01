@@ -12,10 +12,14 @@ set -euo pipefail
 KERNEL_VERSION="6.19.5"
 XR_RELEASE="1"
 RT_VERSION=""
+SECURITY_PREFLIGHT_ONLY=0
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 XR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PATCH_DIR="${XR_DIR}/patches"
 SERIES_FILE="${PATCH_DIR}/series"
+SECURITY_DIR="${XR_DIR}/security"
+CVE_2026_31431_PATCH="cve-2026-31431-algif-aead.patch"
+APPLY_CVE_2026_31431_PATCH=0
 
 usage() {
     echo "Usage: $0 --kernel-version VER --xr-release REL [--rt-version RT_VER]"
@@ -24,7 +28,14 @@ usage() {
     echo "  --kernel-version  Kernel version (default: 6.19.5)"
     echo "  --xr-release      XR release number (default: 1)"
     echo "  --rt-version      RT patch version (e.g., 6.19.3-rt1; empty to skip)"
+    echo "  --security-preflight-only"
+    echo "                    Check security gates and exit before staging/building"
     echo "  --help            Show this help"
+    echo ""
+    echo "Security:"
+    echo "  Vulnerable 6.19.x kernels use the repo-managed CVE-2026-31431 backport."
+    echo "  Other vulnerable or unknown kernels are refused unless"
+    echo "  LINUX_XR_ALLOW_CVE_2026_31431=1 is set for explicit validation."
     exit 1
 }
 
@@ -33,6 +44,7 @@ while [[ $# -gt 0 ]]; do
         --kernel-version) KERNEL_VERSION="$2"; shift 2 ;;
         --xr-release)     XR_RELEASE="$2"; shift 2 ;;
         --rt-version)     RT_VERSION="$2"; shift 2 ;;
+        --security-preflight-only) SECURITY_PREFLIGHT_ONLY=1; shift ;;
         --help)           usage ;;
         *)                echo "Unknown option: $1"; usage ;;
     esac
@@ -41,11 +53,114 @@ done
 KRELEASE="${XR_RELEASE}.xr.el10"
 KMAJOR="${KERNEL_VERSION%%.*}"
 
+cve_2026_31431_status() {
+    local version="$1"
+    local core major minor patch
+
+    core="${version%%-*}"
+    IFS=. read -r major minor patch _ <<< "${core}"
+    patch="${patch:-0}"
+
+    if [[ ! "${major}" =~ ^[0-9]+$ || ! "${minor}" =~ ^[0-9]+$ || ! "${patch}" =~ ^[0-9]+$ ]]; then
+        echo "unknown"
+        return
+    fi
+
+    if [[ "${version}" == *-rc* ]]; then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major > 7 )); then
+        echo "fixed-or-newer"
+        return
+    fi
+
+    if (( major == 7 )); then
+        echo "fixed"
+        return
+    fi
+
+    if (( major == 6 && minor == 19 )); then
+        if (( patch >= 12 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 6 && minor == 18 )); then
+        if (( patch >= 22 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    echo "unknown"
+}
+
+cve_2026_31431_repo_backport_applies() {
+    local version="$1"
+    local core major minor patch
+
+    [[ "${version}" != *-rc* ]] || return 1
+
+    core="${version%%-*}"
+    IFS=. read -r major minor patch _ <<< "${core}"
+    patch="${patch:-0}"
+
+    [[ "${major}" =~ ^[0-9]+$ && "${minor}" =~ ^[0-9]+$ && "${patch}" =~ ^[0-9]+$ ]] || return 1
+    (( major == 6 && minor == 19 && patch < 12 ))
+}
+
+enforce_cve_2026_31431_gate() {
+    local status
+
+    status="$(cve_2026_31431_status "${KERNEL_VERSION}")"
+    case "${status}" in
+        vulnerable)
+            if cve_2026_31431_repo_backport_applies "${KERNEL_VERSION}" \
+                && [[ -f "${SECURITY_DIR}/${CVE_2026_31431_PATCH}" ]]; then
+                APPLY_CVE_2026_31431_PATCH=1
+                echo ">>> CVE-2026-31431: ${KERNEL_VERSION} is vulnerable; applying ${CVE_2026_31431_PATCH}."
+            elif [[ "${LINUX_XR_ALLOW_CVE_2026_31431:-}" == "1" ]]; then
+                echo "WARNING: building ${KERNEL_VERSION} despite CVE-2026-31431 vulnerable range."
+                echo "WARNING: this must be limited to explicit forensic or backport-validation work."
+            else
+                echo "ERROR: refusing to build ${KERNEL_VERSION}; it is in the known CVE-2026-31431 vulnerable range." >&2
+                echo "ERROR: use 6.19.12+, 6.18.22+, 7.0+, or add a repo-managed backport for this base." >&2
+                echo "ERROR: set LINUX_XR_ALLOW_CVE_2026_31431=1 only for explicit validation." >&2
+                exit 1
+            fi
+            ;;
+        unknown)
+            if [[ "${LINUX_XR_ALLOW_CVE_2026_31431:-}" == "1" ]]; then
+                echo "WARNING: CVE-2026-31431 fixed status is unknown for ${KERNEL_VERSION}; override accepted."
+            else
+                echo "ERROR: CVE-2026-31431 fixed status is unknown for ${KERNEL_VERSION}." >&2
+                echo "ERROR: update the security gate or set LINUX_XR_ALLOW_CVE_2026_31431=1 for an explicit validation build." >&2
+                exit 1
+            fi
+            ;;
+    esac
+}
+
+enforce_cve_2026_31431_gate
+
 echo "=== linux-xr kernel build ==="
 echo "  Kernel:  ${KERNEL_VERSION}"
 echo "  Release: ${KRELEASE}"
 echo "  RT:      ${RT_VERSION:-disabled}"
+echo "  CVE-2026-31431 backport: ${APPLY_CVE_2026_31431_PATCH}"
 echo ""
+
+if [[ "${SECURITY_PREFLIGHT_ONLY}" == "1" ]]; then
+    echo ">>> Security preflight complete; exiting before rpmbuild staging."
+    exit 0
+fi
 
 # Setup rpmbuild tree
 RPMBUILD="${HOME}/rpmbuild"
@@ -119,7 +234,19 @@ for patch in "${PATCHES[@]}"; do
     install -m 0644 "${PATCH_DIR}/${patch}" "${RPMBUILD}/SOURCES/${patch}"
 done
 
-# --- Step 4: Copy base config ---
+# --- Step 4: Stage security backports from this repo ---
+if [[ "${APPLY_CVE_2026_31431_PATCH}" == "1" ]]; then
+    echo ">>> Staging CVE-2026-31431 backport from ${SECURITY_DIR}..."
+    if [[ ! -f "${SECURITY_DIR}/${CVE_2026_31431_PATCH}" ]]; then
+        echo "ERROR: missing security patch ${SECURITY_DIR}/${CVE_2026_31431_PATCH}"
+        exit 1
+    fi
+    install -m 0644 \
+        "${SECURITY_DIR}/${CVE_2026_31431_PATCH}" \
+        "${RPMBUILD}/SOURCES/${CVE_2026_31431_PATCH}"
+fi
+
+# --- Step 5: Copy base config ---
 echo ">>> Copying base config..."
 if [[ -f "${XR_DIR}/config/base.config" ]]; then
     cp "${XR_DIR}/config/base.config" "${RPMBUILD}/SOURCES/base.config"
@@ -129,18 +256,19 @@ else
     exit 1
 fi
 
-# --- Step 5: Copy spec ---
+# --- Step 6: Copy spec ---
 cp "${XR_DIR}/specs/kernel-xr.spec" "${RPMBUILD}/SPECS/"
 
-# --- Step 6: Skip separate patch test (rpmbuild applies patches in %prep) ---
+# --- Step 7: Skip separate patch test (rpmbuild applies patches in %prep) ---
 echo ">>> Skipping separate patch test (rpmbuild handles patch application)."
 echo ">>> If patches fail to apply, rpmbuild will exit with an error."
 
-# --- Step 7: Build RPMs ---
+# --- Step 8: Build RPMs ---
 echo ">>> Building RPMs..."
 DEFINES=(
     --define "kversion ${KERNEL_VERSION}"
     --define "xr_release ${XR_RELEASE}"
+    --define "apply_cve_2026_31431_patch ${APPLY_CVE_2026_31431_PATCH}"
 )
 
 if [[ -n "${RT_VERSION}" ]]; then
@@ -156,7 +284,7 @@ fi
 
 rpmbuild -bb --nodeps "${DEFINES[@]}" "${RPMBUILD}/SPECS/kernel-xr.spec"
 
-# --- Step 8: Report ---
+# --- Step 9: Report ---
 echo ""
 echo "=== Build complete ==="
 echo "RPMs:"

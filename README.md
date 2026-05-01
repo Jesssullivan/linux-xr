@@ -58,9 +58,12 @@ The real RPM release lane remains [`build-kernel.yml`](.github/workflows/build-k
 |-------|---------|
 | `0007-vesa-dsc-bpp.patch` | VESA DisplayID DSC BPP parser, QP table + RC offset fixes for 8bpc 4:4:4 @ 8 BPP |
 | `bigscreen-beyond-edid.patch` | EDID non-desktop quirk for Beyond (BIG/0x1234 + 0x5095) |
+| `cve-2026-31431-algif-aead.patch` | CVE-2026-31431 stable `6.19.y` security backport, applied automatically for vulnerable 6.19.x bases |
 | `patch-6.19.3-rt1.patch` | PREEMPT_RT real-time scheduling (RT variant only, downloaded from kernel.org) |
 
-Patches are maintained in this repository under [`xr/patches`](xr/patches).
+XR carry patches are maintained in this repository under [`xr/patches`](xr/patches).
+Security backports that are not part of the normal XR carry live under
+[`xr/security`](xr/security).
 
 RT motivation comes from possible deadline-sensitive workloads: AD/DA and
 sensor I/O for the BCI server, audio periods/xruns, and XR compositor frame
@@ -226,27 +229,49 @@ Build optimizations:
 - `CONFIG_DEBUG_INFO=n` — reduces link-time memory from ~8GB to ~2GB
 - Parallelism capped at `-j4` — prevents OOM on memory-constrained runners
 - ccache with `save-always: true` — warm builds ~1h vs cold ~2h
-- `weekly-cadence.yml` — fetches upstream refs, renders a markdown report from `xr/patches/series`, and opens a weekly cadence issue
+- `weekly-cadence.yml` — fetches upstream plus `linux-6.19.y` stable refs, renders a markdown report from `xr/patches/series`, includes the current security watch, and opens a weekly cadence issue
 
 ## Version scheme
 
 `6.19.5-2.xr.el10` → `uname -r` outputs `6.19.5-rt1-2.xr.el10`
 
+## Security gate
+
+`xr/scripts/build-rpm.sh` guards CVE-2026-31431 builds. The current gate treats
+`6.19.x` before `6.19.12`, `6.18.x` before `6.18.22`, and release candidates
+before `7.0` as unsafe bases. Vulnerable `6.19.x` builds continue only by
+applying the repo-managed backport in
+[`xr/security/cve-2026-31431-algif-aead.patch`](xr/security/cve-2026-31431-algif-aead.patch).
+Other vulnerable or unknown bases are refused unless
+`LINUX_XR_ALLOW_CVE_2026_31431=1` is set for explicit validation.
+
+For a no-build check of the active route:
+
+```bash
+./xr/scripts/build-rpm.sh --kernel-version 6.19.5 --xr-release 9 --security-preflight-only
+```
+
 ## Kernel upgrade workflow
 
 1. Review the weekly cadence issue opened by `.github/workflows/weekly-cadence.yml`
-2. Compare against current upstream and stable refs before choosing a merge target
-3. Update `xr/config/base.config` if `honey`'s running base kernel changes
-4. Tag: `git tag -a v6.20.1-xr1 -m "XR kernel 6.20.1"`
-5. CI builds + publishes RPMs
-6. Promote only after `honey` and `yoga` validation
+2. Compare against current upstream and the active 6.19.y stable ref before choosing a merge target
+3. Confirm the cadence security watch is fixed or explicitly waived for validation-only work
+4. Update `xr/config/base.config` if `honey`'s running base kernel changes
+5. Tag: `git tag -a v6.20.1-xr1 -m "XR kernel 6.20.1"`
+6. CI builds + publishes RPMs
+7. Promote only after `honey` and `yoga` validation
 
 ## Upstream status
 
-As of 2026-04-25, `xr/main` was observed at `3beda6220731`. Kernel.org has advanced beyond this repo's `origin/master` snapshot: upstream `master` was observed at `897d54018cc9`, `v7.0` exists, and stable `v6.19.14` exists. The RPM lane still builds the configured `6.19.5` tarball until the cadence item deliberately moves it.
+As of 2026-04-30, the latest published linux-xr release is still
+`v6.19.5-xr8`. Do not promote that line until CVE-2026-31431 is resolved by
+moving to at least `6.19.12` or by releasing a newly built artifact with the
+repo-managed backport. Kernel.org stable `6.19.y` contains the CVE fix as
+`ce42ee423e58`, corresponding to the mainline fix `a664bf3d603d`.
 
 | Patch/workstream | Upstream status | Next action |
 |-------|----------------|-----|
+| CVE-2026-31431 / `algif_aead` | Fixed upstream in `7.0` and stable `6.19.12`; current published XR artifacts are `6.19.5`; this repo now carries the `6.19.y` backport for new builds | Rebuild `6.19.5` with the backport or move to a fixed base before promotion. |
 | VESA DisplayID DSC BPP parser / amdgpu handling | In-flight upstream series; not present in current upstream checkout | Track Bolyukin v7 fixed-DSC-BPP series and drop this part when it lands. |
 | QP table + RC offset adjustments | Local carry; not submitted as a standalone upstream series | Split from the DisplayID parser carry using `xr/patches/0007-vesa-dsc-bpp.map.md` and decide whether this is evidence-backed upstream material or host-only risk. |
 | EDID non-desktop quirk for `BIG/0x1234` and `BIG/0x5095` | Absent from current upstream checkout | Follow `xr/patches/bigscreen-beyond-edid.route.md`: local `BIG/0x1234` evidence now proves `non-desktop=1`; next regenerate an upstream/drm-misc topic patch and send via the DRM route. |
