@@ -21,7 +21,7 @@ jobs:
       - name: Fetch upstream refs
         run: |
           git fetch --no-tags --prune https://github.com/torvalds/linux.git master:refs/remotes/upstream/master
-          git fetch --tags --prune https://github.com/gregkh/linux.git master:refs/remotes/stable/master
+          git fetch --tags --prune https://github.com/gregkh/linux.git linux-6.19.y:refs/remotes/stable/linux-6.19.y
 
       - name: Generate cadence report
         run: |
@@ -29,7 +29,7 @@ jobs:
           xr/scripts/generate-cadence-report.sh \
             --base-ref HEAD \
             --upstream-ref refs/remotes/upstream/master \
-            --stable-ref refs/remotes/stable/master \
+            --stable-ref refs/remotes/stable/linux-6.19.y \
             --output cadence-report.md
           sed -n '1,200p' cadence-report.md
 

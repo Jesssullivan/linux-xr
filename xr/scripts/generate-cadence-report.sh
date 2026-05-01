@@ -7,12 +7,20 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 XR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PATCH_DIR="${XR_DIR}/patches"
 SERIES_FILE="${PATCH_DIR}/series"
+BUILD_SCRIPT="${XR_DIR}/scripts/build-rpm.sh"
+SECURITY_DIR="${XR_DIR}/security"
+
+CVE_2026_31431_MAINLINE_FIX="a664bf3d603dc3bdcf9ae47cc21e0daec706d7a5"
+CVE_2026_31431_6_19_FIX="ce42ee423e58dffa5ec03524054c9d8bfd4f6237"
+CVE_2026_31431_6_18_FIX="fafe0fa2995a0f7073c1c358d7d3145bcc9aedd8"
+CVE_2026_31431_PATCH="cve-2026-31431-algif-aead.patch"
 
 BASE_REF="HEAD"
 UPSTREAM_REF=""
 STABLE_REF=""
 OUTPUT="-"
 MAX_COMMITS=10
+PATCH_TRIAGE=1
 
 usage() {
     cat <<'EOF'
@@ -24,6 +32,7 @@ Options:
   --stable-ref REF     Stable Linux ref to compare against
   --output PATH        Output markdown file ('-' for stdout)
   --max-commits N      Number of commits to show per section (default: 10)
+  --skip-patch-triage  Do not create temporary worktrees to test patch application
   --help               Show this help
 EOF
 }
@@ -35,6 +44,7 @@ while [[ $# -gt 0 ]]; do
         --stable-ref) STABLE_REF="$2"; shift 2 ;;
         --output) OUTPUT="$2"; shift 2 ;;
         --max-commits) MAX_COMMITS="$2"; shift 2 ;;
+        --skip-patch-triage) PATCH_TRIAGE=0; shift ;;
         --help) usage; exit 0 ;;
         *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
     esac
@@ -72,8 +82,211 @@ carry_rows() {
     done < "${SERIES_FILE}"
 }
 
+markdown_cell() {
+    local value="$1"
+
+    value="${value//$'\n'/ }"
+    value="${value//|/\\|}"
+    echo "${value}"
+}
+
+series_patch_count() {
+    if [[ ! -f "${SERIES_FILE}" ]]; then
+        echo 0
+        return
+    fi
+
+    grep -Ev '^[[:space:]]*($|#)' "${SERIES_FILE}" | wc -l | tr -d ' '
+}
+
+series_apply_status() {
+    local label="$1"
+    local ref="$2"
+    local worktree
+    local err_file
+    local patch
+    local count=0
+    local status="clean"
+    local detail
+
+    if [[ -z "${ref}" ]] || ! has_ref "${ref}"; then
+        echo "| ${label} | \`${ref:-unavailable}\` | \`unavailable\` | ref unavailable |"
+        return
+    fi
+
+    if [[ ! -f "${SERIES_FILE}" ]]; then
+        echo "| ${label} | \`${ref}\` | \`unavailable\` | series missing |"
+        return
+    fi
+
+    worktree="$(mktemp -d)"
+    err_file="$(mktemp)"
+
+    if ! git worktree add --detach --quiet "${worktree}" "${ref}" >"${err_file}" 2>&1; then
+        detail="$(head -n 1 "${err_file}")"
+        rm -rf "${worktree}" "${err_file}"
+        echo "| ${label} | \`${ref}\` | \`unavailable\` | $(markdown_cell "${detail:-worktree checkout failed}") |"
+        return
+    fi
+
+    if [[ "$(git -C "${worktree}" config --bool core.sparseCheckout || true)" == "true" ]]; then
+        detail="checkout is sparse; kernel source paths are unavailable"
+        git worktree remove --force "${worktree}" >/dev/null 2>&1 || rm -rf "${worktree}"
+        rm -f "${err_file}"
+        echo "| ${label} | \`${ref}\` | \`unavailable\` | $(markdown_cell "${detail}") |"
+        return
+    fi
+
+    while IFS= read -r patch; do
+        [[ -z "${patch}" || "${patch}" =~ ^[[:space:]]*# ]] && continue
+        count=$((count + 1))
+        if ! git -C "${worktree}" apply --check "${PATCH_DIR}/${patch}" >"${err_file}" 2>&1; then
+            status="conflict"
+            detail="${patch}: $(head -n 1 "${err_file}")"
+            break
+        fi
+        if ! git -C "${worktree}" apply "${PATCH_DIR}/${patch}" >"${err_file}" 2>&1; then
+            status="conflict"
+            detail="${patch}: $(head -n 1 "${err_file}")"
+            break
+        fi
+    done < "${SERIES_FILE}"
+
+    if [[ "${status}" == "clean" ]]; then
+        detail="${count}/$(series_patch_count) patches apply in series order"
+    fi
+
+    git worktree remove --force "${worktree}" >/dev/null 2>&1 || rm -rf "${worktree}"
+    rm -f "${err_file}"
+
+    echo "| ${label} | \`${ref}\` | \`${status}\` | $(markdown_cell "${detail}") |"
+}
+
+default_kernel_version() {
+    sed -nE 's/^KERNEL_VERSION="([^"]+)"/\1/p' "${BUILD_SCRIPT}" | head -n 1
+}
+
+cve_2026_31431_version_status() {
+    local version="$1"
+    local core major minor patch
+
+    core="${version%%-*}"
+    IFS=. read -r major minor patch _ <<< "${core}"
+    patch="${patch:-0}"
+
+    if [[ ! "${major}" =~ ^[0-9]+$ || ! "${minor}" =~ ^[0-9]+$ || ! "${patch}" =~ ^[0-9]+$ ]]; then
+        echo "unknown"
+        return
+    fi
+
+    if [[ "${version}" == *-rc* ]]; then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major > 7 )); then
+        echo "fixed-or-newer"
+        return
+    fi
+
+    if (( major == 7 )); then
+        echo "fixed"
+        return
+    fi
+
+    if (( major == 6 && minor == 19 )); then
+        if (( patch >= 12 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 6 && minor == 18 )); then
+        if (( patch >= 22 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    echo "unknown"
+}
+
+cve_2026_31431_repo_backport_applies() {
+    local version="$1"
+    local core major minor patch
+
+    [[ "${version}" != *-rc* ]] || return 1
+
+    core="${version%%-*}"
+    IFS=. read -r major minor patch _ <<< "${core}"
+    patch="${patch:-0}"
+
+    [[ "${major}" =~ ^[0-9]+$ && "${minor}" =~ ^[0-9]+$ && "${patch}" =~ ^[0-9]+$ ]] || return 1
+    (( major == 6 && minor == 19 && patch < 12 ))
+}
+
+cve_2026_31431_repo_backport_status() {
+    if [[ -f "${SECURITY_DIR}/${CVE_2026_31431_PATCH}" ]]; then
+        echo "present"
+    else
+        echo "missing"
+    fi
+}
+
+cve_2026_31431_build_route_status() {
+    local version="$1"
+    local version_status
+
+    version_status="$(cve_2026_31431_version_status "${version}")"
+    case "${version_status}" in
+        fixed|fixed-or-newer)
+            echo "fixed-base"
+            ;;
+        vulnerable)
+            if cve_2026_31431_repo_backport_applies "${version}"; then
+                if [[ "$(cve_2026_31431_repo_backport_status)" == "present" ]]; then
+                    echo "repo-backport-applied-by-build"
+                else
+                    echo "backport-missing"
+                fi
+            else
+                echo "vulnerable"
+            fi
+            ;;
+        *)
+            echo "${version_status}"
+            ;;
+    esac
+}
+
+ref_contains_commit() {
+    local ref="$1"
+    local commit="$2"
+
+    if [[ -z "${ref}" ]] || ! has_ref "${ref}"; then
+        echo "unavailable"
+        return
+    fi
+
+    if ! git cat-file -e "${commit}^{commit}" >/dev/null 2>&1; then
+        echo "unavailable"
+        return
+    fi
+
+    if git merge-base --is-ancestor "${commit}" "${ref}" >/dev/null 2>&1; then
+        echo "yes"
+    else
+        echo "no"
+    fi
+}
+
 BASE_SHA="$(short_ref "${BASE_REF}")"
 GENERATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+DEFAULT_KERNEL_VERSION="$(default_kernel_version)"
 
 tmp_report="$(mktemp)"
 trap 'rm -f "${tmp_report}"' EXIT
@@ -126,6 +339,31 @@ trap 'rm -f "${tmp_report}"' EXIT
     fi
 
     echo
+    echo "## Security Watch"
+    echo
+    echo "| Item | Status |"
+    echo "| --- | --- |"
+    echo "| CVE-2026-31431 default base kernel \`${DEFAULT_KERNEL_VERSION:-unavailable}\` | \`$(cve_2026_31431_version_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
+    echo "| CVE-2026-31431 repo backport \`${CVE_2026_31431_PATCH}\` | \`$(cve_2026_31431_repo_backport_status)\` |"
+    echo "| CVE-2026-31431 default build route | \`$(cve_2026_31431_build_route_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
+    echo "| CVE-2026-31431 upstream/mainline fix \`${CVE_2026_31431_MAINLINE_FIX:0:12}\` in upstream ref | \`$(ref_contains_commit "${UPSTREAM_REF}" "${CVE_2026_31431_MAINLINE_FIX}")\` |"
+    echo "| CVE-2026-31431 6.19.y fix \`${CVE_2026_31431_6_19_FIX:0:12}\` in stable ref | \`$(ref_contains_commit "${STABLE_REF}" "${CVE_2026_31431_6_19_FIX}")\` |"
+    echo
+    echo "Known fixed floors for this gate: \`6.19.12+\`, \`6.18.22+\`, and \`7.0+\`."
+    echo "For vulnerable \`6.19.x\` bases, \`build-rpm.sh\` applies the repo backport when present."
+    echo
+    echo "## Carry Apply Triage"
+    echo
+    echo "| Target | Ref | Status | Detail |"
+    echo "| --- | --- | --- | --- |"
+    if [[ "${PATCH_TRIAGE}" == "1" ]]; then
+        series_apply_status "base" "${BASE_REF}"
+        series_apply_status "upstream" "${UPSTREAM_REF}"
+        series_apply_status "stable" "${STABLE_REF}"
+    else
+        echo "| all | n/a | \`skipped\` | patch triage disabled |"
+    fi
+    echo
     echo "## Stable Summary"
     echo
 
@@ -139,10 +377,11 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo
     echo "## Next Actions"
     echo
-    echo "1. Inspect the upstream-only commit list for merge candidates or conflicts."
-    echo "2. Check whether every patch in \`xr/patches/series\` still applies cleanly."
-    echo "3. Build both generic and RT variants if the carry set is unchanged."
-    echo "4. Promote only after named-host validation on \`honey\` and \`yoga\`."
+    echo "1. Resolve any \`vulnerable\`, \`backport-missing\`, or \`unknown\` default build route before release work."
+    echo "2. Inspect the upstream-only commit list for merge candidates or conflicts."
+    echo "3. Check whether every patch in \`xr/patches/series\` still applies cleanly."
+    echo "4. Build both generic and RT variants if the carry set is unchanged."
+    echo "5. Promote only after named-host validation on \`honey\` and \`yoga\`."
 } > "${tmp_report}"
 
 if [[ "${OUTPUT}" == "-" ]]; then

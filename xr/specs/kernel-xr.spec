@@ -18,6 +18,7 @@
 %global krelease  %{xr_release}.xr.el10
 %{!?rt_version: %global rt_version %{nil}}
 %{!?variant: %global variant %{nil}}
+%{!?apply_cve_2026_31431_patch: %global apply_cve_2026_31431_patch 0}
 %if "%{variant}" == "-rt"
 %global actual_krel_regex ^%{kversion}-rt[^[:space:]]*-%{krelease}$
 %else
@@ -37,6 +38,9 @@ Source1:        base.config
 # XR patches (fetched by build-rpm.sh into SOURCES/)
 Patch0:         0007-vesa-dsc-bpp.patch
 Patch1:         bigscreen-beyond-edid.patch
+%if 0%{?apply_cve_2026_31431_patch}
+Patch2:         cve-2026-31431-algif-aead.patch
+%endif
 
 BuildRequires:  gcc
 BuildRequires:  make
@@ -68,6 +72,9 @@ on AMD GPUs (RDNA2+). Includes:
 - EDID non-desktop quirk for Beyond (BIG/0x1234)
 - DSC QP table corrections for 8bpc 4:4:4 at 8 BPP
 - RC offset fix for ofs[11] in get_ofs_set() CM_444/CM_RGB
+%if 0%{?apply_cve_2026_31431_patch}
+- CVE-2026-31431 algif_aead backport
+%endif
 %if "%{rt_version}" != ""
 - PREEMPT_RT real-time scheduling (%{rt_version})
 %endif
@@ -89,6 +96,11 @@ Userspace API header files for kernel-xr %{kversion}-%{krelease}.
 
 %prep
 %setup -q -n linux-%{kversion}
+
+# Apply security backports before RT and XR carry patches.
+%if 0%{?apply_cve_2026_31431_patch}
+%patch -P2 -p1
+%endif
 
 # Apply RT patch first (if building RT kernel)
 %if "%{rt_version}" != ""

@@ -69,8 +69,10 @@
             set -euo pipefail
             patch_dir="${self}/xr/patches"
             series_file="$patch_dir/series"
+            security_dir="${self}/xr/security"
 
             test -f "$series_file"
+            test -f "$security_dir/cve-2026-31431-algif-aead.patch"
 
             while IFS= read -r patch; do
               case "$patch" in
@@ -91,6 +93,7 @@
             set -euo pipefail
             bash -n "${self}/xr/scripts/build-rpm.sh"
             bash -n "${self}/xr/scripts/generate-cadence-report.sh"
+            bash -n "${self}/xr/scripts/check-cve-2026-31431-live.sh"
             mkdir -p "$out"
           '';
 
@@ -98,8 +101,12 @@
             nativeBuildInputs = with pkgs; [ bash patch ];
           } ''
             set -euo pipefail
-            patch -d "${self}" -p1 --dry-run < "${self}/xr/patches/0007-vesa-dsc-bpp.patch"
-            patch -d "${self}" -p1 --dry-run < "${self}/xr/patches/bigscreen-beyond-edid.patch"
+            if [ -e "${self}/drivers/gpu/drm/drm_edid.c" ]; then
+              patch --batch -d "${self}" -p1 --dry-run < "${self}/xr/patches/0007-vesa-dsc-bpp.patch"
+              patch --batch -d "${self}" -p1 --dry-run < "${self}/xr/patches/bigscreen-beyond-edid.patch"
+            else
+              echo "kernel source paths absent; skipping patch application in sparse checkout"
+            fi
             mkdir -p "$out"
           '';
         });
