@@ -260,10 +260,12 @@ Build optimizations:
 
 ## Security gate
 
-`xr/scripts/build-rpm.sh` guards CVE-2026-31431 builds. The current gate treats
-`6.19.x` before `6.19.12`, `6.18.x` before `6.18.22`, and release candidates
-before `7.0` as unsafe bases. Vulnerable `6.19.x` builds continue only by
-applying the repo-managed backport in
+`xr/scripts/build-rpm.sh` guards CVE-2026-31431 builds. The current gate follows
+the NVD affected floors, including `5.10.x` before `5.10.254`, `5.15.x` before
+`5.15.204`, `6.1.x` before `6.1.170`, `6.6.x` before `6.6.137`, `6.12.x`
+before `6.12.85`, `6.18.x` before `6.18.22`, `6.19.x` before `6.19.12`, and
+release candidates before `7.0` as unsafe bases. Vulnerable `6.19.x` builds
+continue only by applying the repo-managed backport in
 [`xr/security/cve-2026-31431-algif-aead.patch`](xr/security/cve-2026-31431-algif-aead.patch).
 Other vulnerable or unknown bases are refused unless
 `LINUX_XR_ALLOW_CVE_2026_31431=1` is set for explicit validation.
@@ -294,7 +296,7 @@ adding, dropping, or upstreaming a repo-managed CVE patch.
 
 | CVE | Public name | linux-xr status | Repo links | External references |
 | --- | --- | --- | --- | --- |
-| CVE-2026-31431 | Copy Fail / `algif_aead` AF_ALG local privilege escalation | Patched in `v6.19.5-xr9` by carrying the stable `6.19.y` backport on top of the vulnerable `6.19.5` base; fixed natively by upstream `6.19.12+` and `7.0+` bases | [`xr/security/cve-2026-31431-algif-aead.patch`](xr/security/cve-2026-31431-algif-aead.patch), [`xr/scripts/build-rpm.sh`](xr/scripts/build-rpm.sh), [`xr/scripts/check-cve-2026-31431-live.sh`](xr/scripts/check-cve-2026-31431-live.sh), [`v6.19.5-xr9`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr9) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-31431), [Red Hat RHSB-2026-02](https://access.redhat.com/security/vulnerabilities/RHSB-2026-02), [Copy Fail](https://copy.fail/) |
+| CVE-2026-31431 | Copy Fail / `algif_aead` AF_ALG local privilege escalation | Patched in `v6.19.5-xr9` by carrying the stable `6.19.y` backport on top of the vulnerable `6.19.5` base; fixed natively by upstream affected-range floors such as `6.19.12+`, `6.18.22+`, `6.12.85+`, `6.6.137+`, `6.1.170+`, `5.15.204+`, `5.10.254+`, and `7.0+` bases | [`xr/security/cve-2026-31431-algif-aead.patch`](xr/security/cve-2026-31431-algif-aead.patch), [`xr/scripts/build-rpm.sh`](xr/scripts/build-rpm.sh), [`xr/scripts/check-cve-2026-31431-live.sh`](xr/scripts/check-cve-2026-31431-live.sh), [`v6.19.5-xr9`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr9) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-31431), [Red Hat RHSB-2026-02](https://access.redhat.com/security/vulnerabilities/RHSB-2026-02), [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog?field_cve=CVE-2026-31431), [Copy Fail](https://copy.fail/) |
 
 ## SELinux and Security Config
 
@@ -349,7 +351,7 @@ Current ingestion checkpoint:
 
 | Patch/workstream | Upstream status | Next action |
 |-------|----------------|-----|
-| CVE-2026-31431 / Copy Fail / `algif_aead` | Fixed upstream in `7.0` and stable `6.19.12`; `v6.19.5-xr9` carries the `6.19.y` backport on the current `6.19.5` lab base | Boot/install validate `xr9` on lab hosts, then rebase to latest suitable `6.19.y` under issue #37. |
+| CVE-2026-31431 / Copy Fail / `algif_aead` | Fixed upstream in `7.0` and stable affected-range floors including `6.19.12`, `6.18.22`, `6.12.85`, `6.6.137`, `6.1.170`, `5.15.204`, and `5.10.254`; `v6.19.5-xr9` carries the `6.19.y` backport on the current `6.19.5` lab base | Boot/install validate `xr9` on lab hosts, then rebase to latest suitable `6.19.y` under issue #37. Treat 6.12-class stock hosts as exposed unless a vendor backport or mitigation is proven. |
 | VESA DisplayID DSC BPP parser / amdgpu handling | In-flight upstream series; not present in current upstream checkout | Track Bolyukin v7 fixed-DSC-BPP series and drop this part when it lands. |
 | QP table + RC offset adjustments | Local carry; not submitted as a standalone upstream series | Split from the DisplayID parser carry using `xr/patches/0007-vesa-dsc-bpp.map.md` and decide whether this is evidence-backed upstream material or host-only risk. |
 | EDID non-desktop quirk for `BIG/0x1234` and `BIG/0x5095` | Absent from current upstream checkout | Follow `xr/patches/bigscreen-beyond-edid.route.md`: local `BIG/0x1234` evidence now proves `non-desktop=1`; next regenerate an upstream/drm-misc topic patch and send via the DRM route. |

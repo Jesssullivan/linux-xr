@@ -212,6 +212,86 @@ cve_2026_31431_version_status() {
         return
     fi
 
+    if (( major == 6 && minor >= 13 && minor <= 17 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 6 && minor == 12 )); then
+        if (( patch >= 85 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 6 && minor >= 7 && minor <= 11 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 6 && minor == 6 )); then
+        if (( patch >= 137 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 6 && minor >= 2 && minor <= 5 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 6 && minor == 1 )); then
+        if (( patch >= 170 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 6 && minor == 0 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 5 && minor >= 16 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 5 && minor == 15 )); then
+        if (( patch >= 204 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 5 && minor >= 11 && minor <= 14 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 5 && minor == 10 )); then
+        if (( patch >= 254 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( (major == 4 && minor >= 14) || (major == 5 && minor <= 9) )); then
+        echo "vulnerable"
+        return
+    fi
+
     echo "unknown"
 }
 
@@ -349,7 +429,7 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo "| CVE-2026-31431 upstream/mainline fix \`${CVE_2026_31431_MAINLINE_FIX:0:12}\` in upstream ref | \`$(ref_contains_commit "${UPSTREAM_REF}" "${CVE_2026_31431_MAINLINE_FIX}")\` |"
     echo "| CVE-2026-31431 6.19.y fix \`${CVE_2026_31431_6_19_FIX:0:12}\` in stable ref | \`$(ref_contains_commit "${STABLE_REF}" "${CVE_2026_31431_6_19_FIX}")\` |"
     echo
-    echo "Known fixed floors for this gate: \`6.19.12+\`, \`6.18.22+\`, and \`7.0+\`."
+    echo "Known fixed floors for this gate include: \`5.10.254+\`, \`5.15.204+\`, \`6.1.170+\`, \`6.6.137+\`, \`6.12.85+\`, \`6.18.22+\`, \`6.19.12+\`, and \`7.0+\`."
     echo "For vulnerable \`6.19.x\` bases, \`build-rpm.sh\` applies the repo backport when present."
     echo
     echo "## Carry Apply Triage"
