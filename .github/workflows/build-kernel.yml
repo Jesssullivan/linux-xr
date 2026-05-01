@@ -163,10 +163,6 @@ jobs:
                 sed -i "s|^#baseurl=http://dl.rockylinux.org|baseurl=https://dl.rockylinux.org|" "$repo"
               done
               dnf install -y --setopt=retries=3 epel-release
-              for repo in /etc/yum.repos.d/rocky*.repo; do
-                sed -i "s|^#mirrorlist=|mirrorlist=|" "$repo"
-                sed -i "s|^baseurl=https://dl.rockylinux.org|#baseurl=http://dl.rockylinux.org|" "$repo"
-              done
               dnf config-manager --set-enabled crb
               dnf install -y --setopt=retries=3 \
                 gcc make elfutils-libelf-devel openssl-devel openssl \
