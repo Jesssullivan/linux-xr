@@ -11,10 +11,9 @@ jobs:
   determinate-ci:
     # This caches and validates the thin Nix surface for linux-xr. It is not
     # the canonical kernel RPM release lane, which remains the Rocky/Linux
-    # workflow in build-kernel.yml.
+    # workflow in build-kernel.yml. Do not opt into FlakeHub publishing here:
+    # this repository is a kernel tree and exceeds FlakeHub's archive limit.
     uses: DeterminateSystems/ci/.github/workflows/workflow.yml@main
     permissions:
       id-token: write
       contents: read
-    with:
-      visibility: unlisted
