@@ -220,9 +220,9 @@ GitHub Release.
 
 Manual dispatch supports building a single variant:
 ```bash
-gh workflow run build-kernel.yml -f variant=generic  # generic only
-gh workflow run build-kernel.yml -f variant=rt       # RT only
-gh workflow run build-kernel.yml -f variant=both     # both (default)
+gh workflow run build-kernel.yml -f kernel_version=6.19.14 -f xr_release=1 -f variant=generic
+gh workflow run build-kernel.yml -f kernel_version=6.19.5 -f xr_release=9 -f variant=rt -f rt_version=6.19.3-rt1
+gh workflow run build-kernel.yml -f kernel_version=6.19.5 -f xr_release=9 -f variant=both -f rt_version=6.19.3-rt1
 ```
 
 Build optimizations:

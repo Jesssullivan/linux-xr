@@ -82,8 +82,17 @@ jobs:
             KVERSION="${{ inputs.kernel_version }}"
             XR_RELEASE="${{ inputs.xr_release }}"
           fi
-          # RT version comes from the matrix
-          RT_VERSION="${{ matrix.variant.rt_version }}"
+          # Tag builds use the current pinned RT lane. Manual dispatch can test a
+          # newly published RT patch before the repository default moves.
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ matrix.variant.name }}" == "rt" ]]; then
+            RT_VERSION="${{ inputs.rt_version }}"
+          else
+            RT_VERSION="${{ matrix.variant.rt_version }}"
+          fi
+          if [[ "${{ matrix.variant.name }}" == "rt" && -z "${RT_VERSION}" ]]; then
+            echo "RT variant requires rt_version."
+            exit 1
+          fi
           echo "kversion=${KVERSION}" >> "$GITHUB_OUTPUT"
           echo "xr_release=${XR_RELEASE}" >> "$GITHUB_OUTPUT"
           echo "rt_version=${RT_VERSION}" >> "$GITHUB_OUTPUT"
