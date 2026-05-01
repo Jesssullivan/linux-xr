@@ -59,7 +59,8 @@ upstream commits. Treat that as source-sync debt, not as evidence that a
 published RPM skipped its configured tarball input. For the current lab line,
 use issue [#37](https://github.com/tinyland-inc/linux-xr/issues/37) to rebase a
 dedicated source-sync branch to the selected stable target, replay linux-xr
-carry, and only then change build defaults or release tags.
+carry, and only then change build defaults or release tags. The operator runbook
+for that work is [`xr/source-sync.md`](xr/source-sync.md).
 
 ## Nix / FlakeHub
 
