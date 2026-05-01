@@ -32,9 +32,9 @@ jobs:
   build-rpm:
     runs-on:
       - self-hosted
-      - Linux
-      - X64
       - tinyland-nix
+      - nix
+      - linux
     timeout-minutes: 360
     env:
       BUILD_IMAGE: rockylinux/rockylinux:10
