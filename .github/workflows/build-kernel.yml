@@ -110,15 +110,16 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            ~/rpmbuild/SOURCES/linux-*.tar.xz
-            ~/rpmbuild/SOURCES/patch-*-rt*.patch
+            ${{ runner.temp }}/linux-xr-rpmbuild-${{ matrix.variant.name }}/SOURCES/linux-*.tar.xz
+            ${{ runner.temp }}/linux-xr-rpmbuild-${{ matrix.variant.name }}/SOURCES/patch-*-rt*.patch
           key: sources-${{ steps.version.outputs.kversion }}-${{ steps.version.outputs.rt_version }}
 
       - name: Clean previous RPM outputs
         if: steps.filter.outputs.skip != 'true'
         run: |
-          mkdir -p "${HOME}/rpmbuild/RPMS"
-          find "${HOME}/rpmbuild/RPMS" -type f -name 'kernel-xr*.rpm' -delete
+          RPMBUILD_HOST="${RUNNER_TEMP}/linux-xr-rpmbuild-${{ matrix.variant.name }}"
+          mkdir -p "${RPMBUILD_HOST}/RPMS"
+          find "${RPMBUILD_HOST}/RPMS" -type f -name 'kernel-xr*.rpm' -delete
 
       - name: Build RPMs
         if: steps.filter.outputs.skip != 'true'
@@ -128,10 +129,11 @@ jobs:
           RT_VERSION: ${{ steps.version.outputs.rt_version }}
         run: |
           CCACHE_DIR_HOST="${RUNNER_TEMP}/linux-xr-ccache-${{ matrix.variant.name }}"
-          mkdir -p "${HOME}/rpmbuild" "${CCACHE_DIR_HOST}"
+          RPMBUILD_HOST="${RUNNER_TEMP}/linux-xr-rpmbuild-${{ matrix.variant.name }}"
+          mkdir -p "${RPMBUILD_HOST}" "${CCACHE_DIR_HOST}"
           docker run --rm --network host \
             -v "${GITHUB_WORKSPACE}:/work" \
-            -v "${HOME}/rpmbuild:/root/rpmbuild" \
+            -v "${RPMBUILD_HOST}:/root/rpmbuild" \
             -v "${CCACHE_DIR_HOST}:/work/.ccache" \
             -w /work \
             -e HOME=/root \
@@ -191,8 +193,8 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: |
-            ~/rpmbuild/SOURCES/linux-*.tar.xz
-            ~/rpmbuild/SOURCES/patch-*-rt*.patch
+            ${{ runner.temp }}/linux-xr-rpmbuild-${{ matrix.variant.name }}/SOURCES/linux-*.tar.xz
+            ${{ runner.temp }}/linux-xr-rpmbuild-${{ matrix.variant.name }}/SOURCES/patch-*-rt*.patch
           key: sources-${{ steps.version.outputs.kversion }}-${{ steps.version.outputs.rt_version }}
 
       - name: Upload RPM artifacts
@@ -200,7 +202,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kernel-xr-rpms-${{ matrix.variant.name }}
-          path: ~/rpmbuild/RPMS/**/*.rpm
+          path: ${{ runner.temp }}/linux-xr-rpmbuild-${{ matrix.variant.name }}/RPMS/**/*.rpm
           retention-days: 30
 
   release:
