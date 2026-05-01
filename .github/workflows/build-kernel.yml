@@ -27,6 +27,14 @@ on:
           - rt
           - generic
         default: 'both'
+      use_ccache:
+        description: 'Restore/save ccache (can add large cache transfer time)'
+        required: true
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+        default: 'false'
 
 jobs:
   build-rpm:
@@ -93,9 +101,14 @@ jobs:
       - name: Checkout
         if: steps.filter.outputs.skip != 'true'
         uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            xr
 
       - name: Restore ccache
-        if: steps.filter.outputs.skip != 'true'
+        if: steps.filter.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.use_ccache == 'true')
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/linux-xr-ccache-${{ matrix.variant.name }}
@@ -182,7 +195,7 @@ jobs:
 
       # Explicit cache saves — not reliant on post hooks that get killed on cancellation
       - name: Save ccache
-        if: always() && steps.filter.outputs.skip != 'true'
+        if: always() && steps.filter.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.use_ccache == 'true')
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/linux-xr-ccache-${{ matrix.variant.name }}
