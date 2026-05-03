@@ -252,7 +252,7 @@ Build optimizations:
 - `CONFIG_DEBUG_INFO=n` — reduces link-time memory from ~8GB to ~2GB
 - Parallelism capped at `-j4` — prevents OOM on memory-constrained runners
 - ccache with `save-always: true` — warm builds ~1h vs cold ~2h
-- `weekly-cadence.yml` — fetches upstream plus `linux-6.19.y` stable refs, renders a markdown report from `xr/patches/series`, checks carry patch application when full source paths are available, includes the current security watch, and opens a weekly cadence issue
+- `weekly-cadence.yml` — fetches upstream plus maintained `linux-7.0.y` stable and `linux-6.18.y` longterm refs, renders a markdown report from `xr/patches/series`, checks carry patch application when full source paths are available, includes the current security watch, and opens a weekly cadence issue
 
 ## Version scheme
 
