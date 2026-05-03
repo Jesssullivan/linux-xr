@@ -5,15 +5,17 @@ upstream stable target. It is separate from the RPM proof-build path.
 
 ## Current target
 
-As of 2026-05-01:
+As of 2026-05-03:
 
 - Current lab release line: `v6.19.5-xr9`
-- Next generic proof target: `v6.19.14`
-- Stable branch tip checked externally: `linux-6.19.y` at `v6.19.14`
+- Bounded EOL compatibility proof target: `v6.19.14`
+- Maintained generic candidate targets: `v7.0.3` stable and `v6.18.26` longterm
 - RT blocker: `patch-6.19.3-rt1` does not apply to `v6.19.14`
 
 Do not merge `torvalds/linux:master` into an active lab release branch. For the
-current lab line, source sync should target `linux-6.19.y` / `v6.19.14`.
+current lab line, source sync should target the selected maintained stable or
+longterm base. Use `v6.19.14` only as a bounded compatibility proof because
+kernel.org now marks the `6.19.y` line EOL.
 
 ## Boundary
 
@@ -35,8 +37,15 @@ macOS case-insensitive checkouts for Linux source truth.
 Required checks before moving build defaults or release tags:
 
 ```bash
+# Bounded EOL proof only:
 ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14
 ./xr/scripts/build-rpm.sh --kernel-version 6.19.14 --xr-release 1 --security-preflight-only
+
+# Maintained candidate checks:
+./xr/scripts/check-kernel-carry.sh --kernel-version 6.18.26
+./xr/scripts/build-rpm.sh --kernel-version 6.18.26 --xr-release 1 --security-preflight-only
+./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.3
+./xr/scripts/build-rpm.sh --kernel-version 7.0.3 --xr-release 1 --security-preflight-only
 ```
 
 RT remains separate until a compatible RT patch is proven:
@@ -50,9 +59,9 @@ That RT command is expected to fail with the current RT patchset.
 ## Source-sync procedure
 
 1. Start from a clean, case-sensitive checkout with kernel history available.
-2. Fetch the stable target from the Linux stable tree.
-3. Create a dedicated branch from `v6.19.14`, for example
-   `codex/source-sync-v6.19.14`.
+2. Fetch the selected stable or longterm target from the Linux stable tree.
+3. Create a dedicated branch from the selected target, for example
+   `codex/source-sync-v7.0.3` or `codex/source-sync-v6.18.26`.
 4. Replay linux-xr-owned overlay files from the active control branch:
    `.github/`, `README.md`, `flake.nix`, `flake.lock`, `site/`, and `xr/`.
 5. Confirm the top-level `Makefile` reports the intended upstream base.

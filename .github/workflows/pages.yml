@@ -29,19 +29,44 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
-      - name: Generate latest release manifest
+      - name: Generate latest installable release manifest
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require("fs");
             const path = require("path");
             const { owner, repo } = context.repo;
-            const data = await github.rest.repos.getLatestRelease({ owner, repo });
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const labTagPattern = /^v\d+\.\d+\.\d+-xr\d+$/;
+            const hasRuntimeAsset = (release, pattern) =>
+              (release.assets || []).some((asset) => pattern.test(asset.name));
+            const candidates = releases
+              .filter((release) =>
+                !release.draft &&
+                labTagPattern.test(release.tag_name) &&
+                hasRuntimeAsset(release, /^kernel-xr-[0-9].*\.rpm$/) &&
+                hasRuntimeAsset(release, /^kernel-xr-rt-[0-9].*\.rpm$/)
+              )
+              .sort((a, b) =>
+                new Date(b.published_at || b.created_at) -
+                new Date(a.published_at || a.created_at)
+              );
+            if (candidates.length === 0) {
+              throw new Error("No installable linux-xr lab release found.");
+            }
+            const data = candidates[0];
             const payload = {
-              tag_name: data.data.tag_name,
-              published_at: data.data.published_at,
-              html_url: data.data.html_url,
-              assets: data.data.assets.map((asset) => ({
+              manifest_schema_version: 2,
+              selection: "latest-installable-lab-release",
+              tag_name: data.tag_name,
+              prerelease: data.prerelease,
+              published_at: data.published_at,
+              html_url: data.html_url,
+              assets: data.assets.map((asset) => ({
                 name: asset.name,
                 size: asset.size,
                 browser_download_url: asset.browser_download_url,
