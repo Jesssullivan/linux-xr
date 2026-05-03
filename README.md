@@ -144,7 +144,7 @@ availability, install flow, and kernel carry status.
 
 ### Phase 1: Install kernel
 
-- [ ] Install from [Releases](https://github.com/tinyland-inc/linux-xr/releases) or the stable Pages installer surface
+- [ ] Install from [Releases](https://github.com/tinyland-inc/linux-xr/releases) or the Pages installer surface for the latest installable lab release
 - [ ] Generic: `curl -fsSL https://tinyland-inc.github.io/linux-xr/install/rocky10-generic.sh | bash`
 - [ ] RT: `curl -fsSL https://tinyland-inc.github.io/linux-xr/install/rocky10-rt.sh | bash`
 - [ ] `sudo dnf install ./kernel-xr-6.19.5-*.xr.el10.x86_64.rpm`
@@ -314,7 +314,8 @@ drift fails before an RPM can be accepted.
 ## Kernel upgrade workflow
 
 1. Review the weekly cadence issue opened by `.github/workflows/weekly-cadence.yml`
-2. Compare against current upstream and the active 6.19.y stable ref before choosing a merge target
+2. Compare against current upstream, maintained stable/longterm refs, and any
+   bounded EOL proof target before choosing a merge target
 3. Confirm the cadence security watch is fixed or explicitly waived for validation-only work
 4. Update `xr/config/base.config` if `honey`'s running base kernel changes
 5. Tag: `git tag -a v6.20.1-xr1 -m "XR kernel 6.20.1"`
@@ -323,35 +324,43 @@ drift fails before an RPM can be accepted.
 
 ## Upstream status
 
-As of 2026-05-01, the latest published secured linux-xr lab release is
+As of 2026-05-03, the latest published secured linux-xr lab release is
 [`v6.19.5-xr9`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr9).
 It keeps the `6.19.5` lab base but carries the repo-managed
-[`CVE-2026-31431`](#known-patched-cves) backport. Kernel.org stable `6.19.y`
-contains the native fix as `ce42ee423e58`, corresponding to the mainline fix
-`a664bf3d603d`; issue
+[`CVE-2026-31431`](#known-patched-cves) backport. Kernel.org now lists
+`6.19.14` as EOL; it remains useful as a bounded compatibility proof, but it
+should not become the long-lived lab target. Issue
 [#37](https://github.com/tinyland-inc/linux-xr/issues/37) tracks rebasing the
-lab line to the latest suitable `6.19.y` base and triaging all carry patches.
+lab line to a selected maintained stable or longterm base and triaging all
+carry patches.
 
 Current ingestion checkpoint:
 
-- Generic `6.19.14` is the next viable stable-base proof target: the XR carry
+- Generic `6.19.14` is a viable EOL compatibility proof target: the XR carry
   patches in [`xr/patches/series`](xr/patches/series) dry-run cleanly against
-  the `linux-6.19.14` tarball.
+  the `linux-6.19.14` tarball, and the CVE security preflight passes without
+  the repo-managed backport.
+- Generic `6.18.26` longterm and `7.0.3` stable are maintained-base candidates:
+  the XR carry patches dry-run cleanly against both tarballs, and the CVE
+  security preflight passes for both.
 - RT cannot move to `6.19.14` with the current `6.19.3-rt1` patchset: that RT
   patch fails to dry-run against `6.19.14` in the `8250_port.c` serial driver
   path. Keep the current RT artifact line on `v6.19.5-xr9` until a compatible
-  RT patchset or local RT refresh is proven.
+  RT patchset or local RT refresh is proven. The visible kernel.org 6.19 RT
+  directory still only exposes `patch-6.19.3-rt1`.
 - Use [`xr/scripts/check-kernel-carry.sh`](xr/scripts/check-kernel-carry.sh) to
   repeat this check before bumping build defaults or tagging a release.
 
 ```bash
 ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14
+./xr/scripts/check-kernel-carry.sh --kernel-version 6.18.26
+./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.3
 ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14 --rt-version 6.19.3-rt1
 ```
 
 | Patch/workstream | Upstream status | Next action |
 |-------|----------------|-----|
-| CVE-2026-31431 / Copy Fail / `algif_aead` | Fixed upstream in `7.0` and stable affected-range floors including `6.19.12`, `6.18.22`, `6.12.85`, `6.6.137`, `6.1.170`, `5.15.204`, and `5.10.254`; `v6.19.5-xr9` carries the `6.19.y` backport on the current `6.19.5` lab base | Boot/install validate `xr9` on lab hosts, then rebase to latest suitable `6.19.y` under issue #37. Treat 6.12-class stock hosts as exposed unless a vendor backport or mitigation is proven. |
+| CVE-2026-31431 / Copy Fail / `algif_aead` | Fixed upstream in `7.0` and stable affected-range floors including `6.19.12`, `6.18.22`, `6.12.85`, `6.6.137`, `6.1.170`, `5.15.204`, and `5.10.254`; `v6.19.5-xr9` carries the `6.19.y` backport on the current `6.19.5` lab base | Boot/install validate `xr9` on lab hosts, then rebase the generic lane to a maintained target such as `7.0.3` stable or `6.18.26` longterm under issue #37. Treat 6.12-class stock hosts as exposed unless a vendor backport or mitigation is proven. |
 | VESA DisplayID DSC BPP parser / amdgpu handling | In-flight upstream series; not present in current upstream checkout | Track Bolyukin v7 fixed-DSC-BPP series and drop this part when it lands. |
 | QP table + RC offset adjustments | Local carry; not submitted as a standalone upstream series | Split from the DisplayID parser carry using `xr/patches/0007-vesa-dsc-bpp.map.md` and decide whether this is evidence-backed upstream material or host-only risk. |
 | EDID non-desktop quirk for `BIG/0x1234` and `BIG/0x5095` | Absent from current upstream checkout | Follow `xr/patches/bigscreen-beyond-edid.route.md`: local `BIG/0x1234` evidence now proves `non-desktop=1`; next regenerate an upstream/drm-misc topic patch and send via the DRM route. |

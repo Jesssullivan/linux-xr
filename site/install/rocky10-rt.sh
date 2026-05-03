@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PAGES_BASE="${PAGES_BASE:-https://tinyland-inc.github.io/linux-xr}"
-API_URL="${API_URL:-https://api.github.com/repos/tinyland-inc/linux-xr/releases/latest}"
+API_URL="${API_URL:-https://api.github.com/repos/tinyland-inc/linux-xr/releases?per_page=30}"
 MANIFEST_URL="${PAGES_BASE}/releases/latest.json"
 DOWNLOAD_ONLY=0
 PRINT_ASSETS=0
@@ -57,33 +57,76 @@ fi
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
 
-if ! curl -fsSL "$MANIFEST_URL" -o "$WORKDIR/latest.json"; then
-    curl -fsSL "$API_URL" -o "$WORKDIR/latest.json"
-fi
-
-mapfile -t URLS < <(python3 - "$WORKDIR/latest.json" <<'PY'
-import json, re, sys
+if curl -fsSL "$MANIFEST_URL" -o "$WORKDIR/releases.json"; then
+    if ! python3 - "$WORKDIR/releases.json" <<'PY'
+import json, sys
 with open(sys.argv[1], "r", encoding="utf-8") as fh:
     data = json.load(fh)
+raise SystemExit(0 if isinstance(data, dict) and data.get("manifest_schema_version") == 2 else 1)
+PY
+    then
+        curl -fsSL "$API_URL" -o "$WORKDIR/releases.json"
+    fi
+else
+    curl -fsSL "$API_URL" -o "$WORKDIR/releases.json"
+fi
+
+mapfile -t RELEASE_LINES < <(python3 - "$WORKDIR/releases.json" <<'PY'
+import json
+import re
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as fh:
+    data = json.load(fh)
+
+lab_tag = re.compile(r"^v\d+\.\d+\.\d+-xr\d+$")
+generic_runtime = re.compile(r"kernel-xr-[0-9].*\.rpm$")
+rt_runtime = re.compile(r"kernel-xr-rt-[0-9].*\.rpm$")
+rt_asset = re.compile(r"kernel-xr-rt(?:-(?:devel|headers))?-[^/]+\.rpm$")
+
+
+def published_key(release):
+    return release.get("published_at") or release.get("created_at") or ""
+
+
+def is_installable(release):
+    if release.get("draft"):
+        return False
+    if not lab_tag.fullmatch(release.get("tag_name", "")):
+        return False
+    names = [asset.get("name", "") for asset in release.get("assets", [])]
+    return (
+        any(generic_runtime.fullmatch(name) for name in names)
+        and any(rt_runtime.fullmatch(name) for name in names)
+    )
+
+
+if isinstance(data, list):
+    candidates = sorted(
+        (release for release in data if is_installable(release)),
+        key=published_key,
+        reverse=True,
+    )
+    if not candidates:
+        raise SystemExit("No installable linux-xr lab release found.")
+    data = candidates[0]
+
+print(data["tag_name"])
 for asset in data.get("assets", []):
     name = asset.get("name", "")
     url = asset.get("browser_download_url", "")
     if not url:
         continue
-    if re.fullmatch(r"kernel-xr-rt(?:-(?:devel|headers))?-[^/]+\.rpm", name):
+    if rt_asset.fullmatch(name):
         print(url)
 PY
 )
 
-TAG="$(python3 - "$WORKDIR/latest.json" <<'PY'
-import json, sys
-with open(sys.argv[1], "r", encoding="utf-8") as fh:
-    print(json.load(fh)["tag_name"])
-PY
-)"
+TAG="${RELEASE_LINES[0]:-}"
+URLS=("${RELEASE_LINES[@]:1}")
 
 if [ "${#URLS[@]}" -eq 0 ]; then
-    echo "No RT RPM assets found in latest release." >&2
+    echo "No RT RPM assets found in latest installable release." >&2
     exit 1
 fi
 
