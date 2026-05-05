@@ -5,7 +5,7 @@ upstream stable target. It is separate from the RPM proof-build path.
 
 ## Current target
 
-As of 2026-05-03:
+As of 2026-05-05:
 
 - Current lab release line: `v6.19.5-xr9`
 - Bounded EOL compatibility proof target: `v6.19.14`

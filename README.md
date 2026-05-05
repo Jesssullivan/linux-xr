@@ -324,7 +324,7 @@ drift fails before an RPM can be accepted.
 
 ## Upstream status
 
-As of 2026-05-03, the latest published secured linux-xr lab release is
+As of 2026-05-05, the latest published secured linux-xr lab release is
 [`v6.19.5-xr9`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr9).
 It keeps the `6.19.5` lab base but carries the repo-managed
 [`CVE-2026-31431`](#known-patched-cves) backport. Kernel.org now lists

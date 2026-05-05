@@ -4,7 +4,7 @@ title: Upstream Status
 
 # Upstream Status
 
-Baseline date: 2026-05-03
+Baseline date: 2026-05-05
 
 ## Carry Set
 
@@ -31,9 +31,9 @@ Carry order is defined in `xr/patches/series`.
 
 ## Current Upstream Snapshot
 
-- linux-xr `xr/main`: `a5aef68c0ff1`
-- upstream `master` observed from kernel.org: `f377d0025eb0`
-- current mainline release candidate observed on kernel.org: `v7.1-rc1`
+- linux-xr `xr/main`: `8290ebb6f86d`
+- upstream `master` observed from kernel.org: `a293ec25d59d`
+- current mainline release candidate observed on kernel.org: `v7.1-rc2`
 - current stable observed on kernel.org: `v7.0.3`
 - current longterm candidates observed on kernel.org: `v6.18.26`, `v6.12.85`
 - latest `6.19.y` stable tag observed on kernel.org: `v6.19.14` `[EOL]`
@@ -45,7 +45,7 @@ merge.
 `v6.19.14` remains a useful bounded compatibility proof because the generic
 linux-xr carry applies cleanly and the CVE security preflight passes, but it
 should not become the durable lab target now that kernel.org marks the line
-EOL. The maintained generic candidates checked on 2026-05-03 are `v7.0.3`
+EOL. The maintained generic candidates checked on 2026-05-05 are `v7.0.3`
 stable and `v6.18.26` longterm; the carry dry-run and CVE security preflight
 passed for both. Keep RT pinned to the current `v6.19.5-xr9` line until a
 compatible RT patchset or local RT refresh is proven.
