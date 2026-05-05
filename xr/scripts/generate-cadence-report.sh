@@ -17,7 +17,7 @@ CVE_2026_31431_PATCH="cve-2026-31431-algif-aead.patch"
 
 BASE_REF="HEAD"
 UPSTREAM_REF=""
-STABLE_REF=""
+STABLE_REFS=()
 OUTPUT="-"
 MAX_COMMITS=10
 PATCH_TRIAGE=1
@@ -29,7 +29,7 @@ Usage: generate-cadence-report.sh [options]
 Options:
   --base-ref REF       Base branch or commit to inspect (default: HEAD)
   --upstream-ref REF   Upstream Linux ref to compare against
-  --stable-ref REF     Stable Linux ref to compare against
+  --stable-ref REF     Stable or longterm Linux ref to compare against; repeatable
   --output PATH        Output markdown file ('-' for stdout)
   --max-commits N      Number of commits to show per section (default: 10)
   --skip-patch-triage  Do not create temporary worktrees to test patch application
@@ -41,7 +41,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --base-ref) BASE_REF="$2"; shift 2 ;;
         --upstream-ref) UPSTREAM_REF="$2"; shift 2 ;;
-        --stable-ref) STABLE_REF="$2"; shift 2 ;;
+        --stable-ref) STABLE_REFS+=("$2"); shift 2 ;;
         --output) OUTPUT="$2"; shift 2 ;;
         --max-commits) MAX_COMMITS="$2"; shift 2 ;;
         --skip-patch-triage) PATCH_TRIAGE=0; shift ;;
@@ -364,6 +364,35 @@ ref_contains_commit() {
     fi
 }
 
+cve_2026_31431_ref_fix_status() {
+    local ref="$1"
+    local commit=""
+
+    case "${ref}" in
+        *linux-7.0.y*|*v7.0*)
+            commit="${CVE_2026_31431_MAINLINE_FIX}"
+            ;;
+        *linux-6.19.y*|*v6.19*)
+            commit="${CVE_2026_31431_6_19_FIX}"
+            ;;
+        *linux-6.18.y*|*v6.18*)
+            commit="${CVE_2026_31431_6_18_FIX}"
+            ;;
+        *)
+            echo "unknown-ref-family"
+            return
+            ;;
+    esac
+
+    ref_contains_commit "${ref}" "${commit}"
+}
+
+ref_label() {
+    local ref="$1"
+
+    basename "${ref}"
+}
+
 BASE_SHA="$(short_ref "${BASE_REF}")"
 GENERATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 DEFAULT_KERNEL_VERSION="$(default_kernel_version)"
@@ -427,7 +456,13 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo "| CVE-2026-31431 repo backport \`${CVE_2026_31431_PATCH}\` | \`$(cve_2026_31431_repo_backport_status)\` |"
     echo "| CVE-2026-31431 default build route | \`$(cve_2026_31431_build_route_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
     echo "| CVE-2026-31431 upstream/mainline fix \`${CVE_2026_31431_MAINLINE_FIX:0:12}\` in upstream ref | \`$(ref_contains_commit "${UPSTREAM_REF}" "${CVE_2026_31431_MAINLINE_FIX}")\` |"
-    echo "| CVE-2026-31431 6.19.y fix \`${CVE_2026_31431_6_19_FIX:0:12}\` in stable ref | \`$(ref_contains_commit "${STABLE_REF}" "${CVE_2026_31431_6_19_FIX}")\` |"
+    if [[ "${#STABLE_REFS[@]}" -gt 0 ]]; then
+        for stable_ref in "${STABLE_REFS[@]}"; do
+            echo "| CVE-2026-31431 fix in candidate ref \`${stable_ref}\` | \`$(cve_2026_31431_ref_fix_status "${stable_ref}")\` |"
+        done
+    else
+        echo "| CVE-2026-31431 fix in candidate refs | \`unavailable\` |"
+    fi
     echo
     echo "Known fixed floors for this gate include: \`5.10.254+\`, \`5.15.204+\`, \`6.1.170+\`, \`6.6.137+\`, \`6.12.85+\`, \`6.18.22+\`, \`6.19.12+\`, and \`7.0+\`."
     echo "For vulnerable \`6.19.x\` bases, \`build-rpm.sh\` applies the repo backport when present."
@@ -439,7 +474,13 @@ trap 'rm -f "${tmp_report}"' EXIT
     if [[ "${PATCH_TRIAGE}" == "1" ]]; then
         series_apply_status "base" "${BASE_REF}"
         series_apply_status "upstream" "${UPSTREAM_REF}"
-        series_apply_status "stable" "${STABLE_REF}"
+        if [[ "${#STABLE_REFS[@]}" -gt 0 ]]; then
+            for stable_ref in "${STABLE_REFS[@]}"; do
+                series_apply_status "$(ref_label "${stable_ref}")" "${stable_ref}"
+            done
+        else
+            series_apply_status "stable" ""
+        fi
     else
         echo "| all | n/a | \`skipped\` | patch triage disabled |"
     fi
@@ -447,11 +488,16 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo "## Stable Summary"
     echo
 
-    if [[ -n "${STABLE_REF}" ]] && has_ref "${STABLE_REF}"; then
-        echo "- Stable ref: \`${STABLE_REF}\` (\`$(short_ref "${STABLE_REF}")\`)"
-        echo "- Latest stable tag: \`$(describe_ref "${STABLE_REF}")\`"
+    if [[ "${#STABLE_REFS[@]}" -gt 0 ]]; then
+        for stable_ref in "${STABLE_REFS[@]}"; do
+            if has_ref "${stable_ref}"; then
+                echo "- Candidate ref: \`${stable_ref}\` (\`$(short_ref "${stable_ref}")\`), latest tag \`$(describe_ref "${stable_ref}")\`"
+            else
+                echo "- Candidate ref unavailable: \`${stable_ref}\`"
+            fi
+        done
     else
-        echo "- Stable ref unavailable in this checkout."
+        echo "- Stable refs unavailable in this checkout."
     fi
 
     echo
