@@ -4,12 +4,11 @@ on:
   push:
     branches: ['xr/main']
     paths:
-      # Keep a push-based escape hatch because release events created by
-      # GitHub Actions do not always fan out into a second workflow run.
+      # Pages deploys are branch-scoped by environment policy. Release tags are
+      # still scanned when generating the manifest, but tag-triggered Pages
+      # deployments are intentionally avoided.
       - 'site/**'
       - '.github/workflows/pages.yml'
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:
