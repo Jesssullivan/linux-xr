@@ -34,4 +34,6 @@ For non-root validation or staged rollout work, both scripts also support:
 
 - The default runtime-only install avoids conflicts with Rocky's stock `kernel-headers` package on existing hosts.
 - `--no-set-default` captures the current default kernel and restores it after install if the package scriptlets change it.
-- The `--with-headers` flag is for development hosts that need UAPI headers and may require removing or replacing the stock `kernel-headers` package first.
+- The `--with-headers` flag is for development hosts that need UAPI headers.
+  The installer refuses that flag while Rocky's stock `kernel-headers` package
+  is installed because both packages own the same `/usr/include` UAPI paths.

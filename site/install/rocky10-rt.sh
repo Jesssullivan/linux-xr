@@ -28,7 +28,7 @@ Options:
   --target-dir DIR    Directory to place downloaded RPMs in
   --no-set-default    Skip grubby default-kernel update after install
   --with-devel        Install the matching kernel-xr-rt-devel RPM too
-  --with-headers      Install the matching kernel-xr-rt-headers RPM too
+  --with-headers      Install kernel-xr-rt-headers too; conflicts with stock kernel-headers
   --help              Show this help
 EOF
 }
@@ -52,6 +52,7 @@ need_cmd python3
 if (( PRINT_ASSETS == 0 && DOWNLOAD_ONLY == 0 )); then
     need_cmd sudo
     need_cmd dnf
+    need_cmd rpm
 fi
 
 WORKDIR="$(mktemp -d)"
@@ -169,6 +170,13 @@ fi
 
 if [ "${#INSTALL_RPMS[@]}" -eq 0 ]; then
     echo "No installable RT RPMs found in ${DOWNLOAD_DIR}." >&2
+    exit 1
+fi
+
+if (( INSTALL_HEADERS == 1 )) && rpm -q kernel-headers >/dev/null 2>&1; then
+    echo "Refusing --with-headers because stock kernel-headers is installed." >&2
+    echo "kernel-xr-rt-headers installs the same UAPI paths under /usr/include." >&2
+    echo "Remove or swap kernel-headers first, or rerun without --with-headers." >&2
     exit 1
 fi
 

@@ -97,6 +97,8 @@
             bash -n "${self}/xr/scripts/check-cve-2026-31431-live.sh"
             bash -n "${self}/xr/scripts/check-security-config.sh"
             bash -n "${self}/xr/scripts/check-kernel-carry.sh"
+            bash -n "${self}/site/install/rocky10-generic.sh"
+            bash -n "${self}/site/install/rocky10-rt.sh"
             mkdir -p "$out"
           '';
 
