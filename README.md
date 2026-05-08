@@ -71,6 +71,7 @@ kernel release build.
 - `nix develop` provides a shell with the core patch/report tooling.
 - `nix flake check` validates the patch series and shell-script syntax.
 - `nix run .#cadence-report -- --upstream-ref <ref> --stable-ref <ref>` runs the weekly cadence report helper from a repo checkout.
+- `nix run .#upstream-triage -- --run-preflight` discovers current stable/RT candidate floors and runs carry/security preflights.
 - `.github/workflows/determinate-ci.yml` pushes those lightweight flake outputs through Determinate CI / FlakeHub Cache.
 
 The real RPM release lane remains [`build-kernel.yml`](.github/workflows/build-kernel.yml) plus [`xr/scripts/build-rpm.sh`](xr/scripts/build-rpm.sh) on Linux. Modeling the full kernel RPM build itself as a flake output is a separate, larger piece of work that should stay explicitly tracked.
@@ -255,6 +256,7 @@ Build optimizations:
 - Parallelism capped at `-j4` — prevents OOM on memory-constrained runners
 - ccache with `save-always: true` — warm builds ~1h vs cold ~2h
 - `weekly-cadence.yml` — fetches upstream plus maintained `linux-7.0.y` stable and `linux-6.18.y` longterm refs, renders a markdown report from `xr/patches/series`, checks carry patch application when full source paths are available, includes the current security watch, and opens a weekly cadence issue
+- `xr/scripts/triage-upstream-targets.sh` — discovers latest maintained generic and RT candidate floors from kernel.org and can run the bounded carry/security preflights used before source-sync promotion
 
 ## Version scheme
 
