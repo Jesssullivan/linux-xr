@@ -5,12 +5,14 @@ upstream stable target. It is separate from the RPM proof-build path.
 
 ## Current target
 
-As of 2026-05-05:
+As of 2026-05-08:
 
-- Current lab release line: `v6.19.5-xr9`
+- Current lab release line: `v6.19.5-xr10` is tagged and waiting on release artifacts
 - Bounded EOL compatibility proof target: `v6.19.14`
-- Maintained generic candidate targets: `v7.0.3` stable and `v6.18.26` longterm
-- RT blocker: `patch-6.19.3-rt1` does not apply to `v6.19.14`
+- Maintained generic candidate targets: `v7.0.5` stable and `v6.18.28` longterm
+- Longterm fallback watch: `v6.12.87`
+- RT candidate floor: `v7.0.1` with `patch-7.0.1-rt2`
+- RT blockers: newest stable `v7.0.5` has no matching RT patch yet; `v6.18.13-rt4` fails the CVE-2026-31431 gate because the repo does not carry a 6.18.13 backport
 
 Do not merge `torvalds/linux:master` into an active lab release branch. For the
 current lab line, source sync should target the selected maintained stable or
@@ -37,24 +39,33 @@ macOS case-insensitive checkouts for Linux source truth.
 Required checks before moving build defaults or release tags:
 
 ```bash
+# Discover current maintained candidates and optionally run bounded preflights:
+./xr/scripts/triage-upstream-targets.sh
+./xr/scripts/triage-upstream-targets.sh --run-preflight
+
 # Bounded EOL proof only:
 ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14
 ./xr/scripts/build-rpm.sh --kernel-version 6.19.14 --xr-release 1 --security-preflight-only
 
 # Maintained candidate checks:
-./xr/scripts/check-kernel-carry.sh --kernel-version 6.18.26
-./xr/scripts/build-rpm.sh --kernel-version 6.18.26 --xr-release 1 --security-preflight-only
-./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.3
-./xr/scripts/build-rpm.sh --kernel-version 7.0.3 --xr-release 1 --security-preflight-only
+./xr/scripts/check-kernel-carry.sh --kernel-version 6.18.28
+./xr/scripts/build-rpm.sh --kernel-version 6.18.28 --xr-release 1 --security-preflight-only
+./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.5
+./xr/scripts/build-rpm.sh --kernel-version 7.0.5 --xr-release 1 --security-preflight-only
 ```
 
 RT remains separate until a compatible RT patch is proven:
 
 ```bash
 ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14 --rt-version 6.19.3-rt1
+./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.1 --rt-version 7.0.1-rt2
+./xr/scripts/build-rpm.sh --kernel-version 7.0.1 --xr-release 1 --rt-version 7.0.1-rt2 --security-preflight-only
 ```
 
-That RT command is expected to fail with the current RT patchset.
+The `6.19.14` RT command is expected to fail with the current `6.19.3-rt1`
+patchset. The `7.0.1-rt2` lane passed carry and security preflights on
+2026-05-08, but it is behind latest stable `7.0.5`; treat it as an RT floor
+candidate, not the generic SOTA target.
 
 ## Source-sync procedure
 

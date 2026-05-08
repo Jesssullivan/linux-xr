@@ -4,7 +4,7 @@ title: Upstream Status
 
 # Upstream Status
 
-Baseline date: 2026-05-05
+Baseline date: 2026-05-08
 
 ## Carry Set
 
@@ -31,11 +31,10 @@ Carry order is defined in `xr/patches/series`.
 
 ## Current Upstream Snapshot
 
-- linux-xr `xr/main`: `8290ebb6f86d`
-- upstream `master` observed from kernel.org: `a293ec25d59d`
-- current mainline release candidate observed on kernel.org: `v7.1-rc2`
-- current stable observed on kernel.org: `v7.0.3`
-- current longterm candidates observed on kernel.org: `v6.18.26`, `v6.12.85`
+- linux-xr `xr/main`: `4add04b32ad3`
+- upstream `master` observed from GitHub: `917719c412c4`
+- current stable observed on kernel.org: `v7.0.5`
+- current longterm candidates observed on kernel.org: `v6.18.28`, `v6.12.87`
 - latest `6.19.y` stable tag observed on kernel.org: `v6.19.14` `[EOL]`
 
 The current RPM lane still builds the configured `6.19.5` tarball. Moving the
@@ -45,10 +44,13 @@ merge.
 `v6.19.14` remains a useful bounded compatibility proof because the generic
 linux-xr carry applies cleanly and the CVE security preflight passes, but it
 should not become the durable lab target now that kernel.org marks the line
-EOL. The maintained generic candidates checked on 2026-05-05 are `v7.0.3`
-stable and `v6.18.26` longterm; the carry dry-run and CVE security preflight
-passed for both. Keep RT pinned to the current `v6.19.5-xr9` line until a
-compatible RT patchset or local RT refresh is proven.
+EOL. The maintained generic candidates checked on 2026-05-08 are `v7.0.5`
+stable and `v6.18.28` longterm; the carry dry-run and security preflight passed
+for both. For RT, kernel.org currently exposes `patch-7.0.1-rt2` and
+`patch-6.18.13-rt4`; the `7.0.1-rt2` lane passed carry and security preflights,
+while `6.18.13-rt4` fails the CVE-2026-31431 gate. Keep RT pinned to the
+current `v6.19.5-xr9` line until a compatible RT patchset or local RT refresh
+is proven and promoted deliberately.
 
 ## Boundary Notes
 
@@ -102,3 +104,7 @@ The weekly maintenance intent is:
 4. promote only after host validation
 
 After merge, `.github/workflows/weekly-cadence.yml` is the repo's scheduled mechanism for producing that weekly report and opening a cadence issue.
+
+For ad hoc target selection, run `xr/scripts/triage-upstream-targets.sh` to
+discover current stable and RT floors, or add `--run-preflight` to execute the
+bounded carry/security checks before opening a source-sync branch.

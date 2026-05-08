@@ -93,6 +93,7 @@
             set -euo pipefail
             bash -n "${self}/xr/scripts/build-rpm.sh"
             bash -n "${self}/xr/scripts/generate-cadence-report.sh"
+            bash -n "${self}/xr/scripts/triage-upstream-targets.sh"
             bash -n "${self}/xr/scripts/check-cve-2026-31431-live.sh"
             bash -n "${self}/xr/scripts/check-security-config.sh"
             bash -n "${self}/xr/scripts/check-kernel-carry.sh"
@@ -133,11 +134,34 @@
               exec bash "$repo_root/xr/scripts/generate-cadence-report.sh" "$@"
             '';
           };
+          upstreamTriage = pkgs.writeShellApplication {
+            name = "linux-xr-upstream-triage";
+            runtimeInputs = with pkgs; [
+              bash
+              coreutils
+              curl
+              gawk
+              git
+              gnugrep
+              gnused
+              gnutar
+              patch
+            ];
+            text = ''
+              set -euo pipefail
+              repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+              exec bash "$repo_root/xr/scripts/triage-upstream-targets.sh" "$@"
+            '';
+          };
         in
         {
           cadence-report = {
             type = "app";
             program = "${cadenceReport}/bin/linux-xr-cadence-report";
+          };
+          upstream-triage = {
+            type = "app";
+            program = "${upstreamTriage}/bin/linux-xr-upstream-triage";
           };
         });
 
