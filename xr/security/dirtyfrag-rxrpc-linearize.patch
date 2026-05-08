@@ -1,0 +1,25 @@
+diff --git a/net/rxrpc/rxkad.c b/net/rxrpc/rxkad.c
+index e923d6829008a..61ed01ae52509 100644
+--- a/net/rxrpc/rxkad.c
++++ b/net/rxrpc/rxkad.c
+@@ -570 +570 @@ static int rxkad_verify_packet(struct rxrpc_call *call, struct sk_buff *skb)
+-	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
++	struct rxrpc_skb_priv *sp;
+@@ -577 +577 @@ static int rxkad_verify_packet(struct rxrpc_call *call, struct sk_buff *skb)
+-	rxrpc_seq_t seq = sp->hdr.seq;
++	rxrpc_seq_t seq;
+@@ -582,3 +581,0 @@ static int rxkad_verify_packet(struct rxrpc_call *call, struct sk_buff *skb)
+-	_enter("{%d{%x}},{#%u}",
+-	       call->debug_id, key_serial(call->conn->key), seq);
+-
+@@ -587,0 +585,10 @@ static int rxkad_verify_packet(struct rxrpc_call *call, struct sk_buff *skb)
++	if (call->conn->security_level != RXRPC_SECURITY_PLAIN &&
++	    skb_linearize_cow(skb) < 0)
++		return -ENOMEM;
++
++	sp = rxrpc_skb(skb);
++	seq = sp->hdr.seq;
++
++	_enter("{%d{%x}},{#%u}",
++	       call->debug_id, key_serial(call->conn->key), seq);
++

@@ -20,7 +20,11 @@ SERIES_FILE="${PATCH_DIR}/series"
 SECURITY_DIR="${XR_DIR}/security"
 SECURITY_CONFIG_CHECK="${XR_DIR}/scripts/check-security-config.sh"
 CVE_2026_31431_PATCH="cve-2026-31431-algif-aead.patch"
+DIRTYFRAG_ESP_PATCH="dirtyfrag-esp-shared-frag.patch"
+DIRTYFRAG_RXRPC_PATCH="dirtyfrag-rxrpc-linearize.patch"
 APPLY_CVE_2026_31431_PATCH=0
+APPLY_DIRTYFRAG_ESP_PATCH=0
+APPLY_DIRTYFRAG_RXRPC_PATCH=0
 
 usage() {
     echo "Usage: $0 --kernel-version VER --xr-release REL [--rt-version RT_VER]"
@@ -37,6 +41,9 @@ usage() {
     echo "  Vulnerable 6.19.x kernels use the repo-managed CVE-2026-31431 backport."
     echo "  Other vulnerable or unknown kernels are refused unless"
     echo "  LINUX_XR_ALLOW_CVE_2026_31431=1 is set for explicit validation."
+    echo "  Dirty Frag ESP/RxRPC page-cache write hardening is required for"
+    echo "  supported vulnerable bases; unsupported vulnerable or unknown bases"
+    echo "  are refused unless LINUX_XR_ALLOW_DIRTYFRAG=1 is set."
     exit 1
 }
 
@@ -53,6 +60,18 @@ done
 
 KRELEASE="${XR_RELEASE}.xr.el10"
 KMAJOR="${KERNEL_VERSION%%.*}"
+
+kernel_version_triplet() {
+    local version="$1"
+    local core major minor patch
+
+    core="${version%%-*}"
+    IFS=. read -r major minor patch _ <<< "${core}"
+    patch="${patch:-0}"
+
+    [[ "${major}" =~ ^[0-9]+$ && "${minor}" =~ ^[0-9]+$ && "${patch}" =~ ^[0-9]+$ ]] || return 1
+    echo "${major} ${minor} ${patch}"
+}
 
 cve_2026_31431_status() {
     local version="$1"
@@ -197,6 +216,102 @@ cve_2026_31431_repo_backport_applies() {
     (( major == 6 && minor == 19 && patch < 12 ))
 }
 
+dirtyfrag_esp_status() {
+    local version="$1"
+    local major minor patch
+
+    if [[ "${version}" == *-rc* ]]; then
+        echo "vulnerable"
+        return
+    fi
+
+    if ! read -r major minor patch < <(kernel_version_triplet "${version}"); then
+        echo "unknown"
+        return
+    fi
+
+    if (( major > 7 )); then
+        echo "unknown"
+        return
+    fi
+
+    if (( major == 7 && minor == 0 )); then
+        if (( patch >= 5 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 6 && (minor == 18 || minor == 19) )); then
+        echo "vulnerable"
+        return
+    fi
+
+    echo "unknown"
+}
+
+dirtyfrag_esp_repo_backport_applies() {
+    local version="$1"
+    local major minor patch
+
+    [[ "${version}" != *-rc* ]] || return 1
+
+    if ! read -r major minor patch < <(kernel_version_triplet "${version}"); then
+        return 1
+    fi
+
+    (( major == 6 && (minor == 18 || minor == 19) )) ||
+        (( major == 7 && minor == 0 && patch < 5 ))
+}
+
+dirtyfrag_rxrpc_status() {
+    local version="$1"
+    local major minor patch
+
+    if [[ "${version}" == *-rc* ]]; then
+        echo "vulnerable"
+        return
+    fi
+
+    if ! read -r major minor patch < <(kernel_version_triplet "${version}"); then
+        echo "unknown"
+        return
+    fi
+
+    if (( major > 7 )); then
+        echo "unknown"
+        return
+    fi
+
+    if (( major == 7 && minor == 0 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 6 && (minor == 18 || minor == 19) )); then
+        echo "vulnerable"
+        return
+    fi
+
+    echo "unknown"
+}
+
+dirtyfrag_rxrpc_repo_backport_applies() {
+    local version="$1"
+    local major minor patch
+
+    [[ "${version}" != *-rc* ]] || return 1
+
+    if ! read -r major minor patch < <(kernel_version_triplet "${version}"); then
+        return 1
+    fi
+
+    (( major == 6 && (minor == 18 || minor == 19) )) ||
+        (( major == 7 && minor == 0 ))
+}
+
 enforce_cve_2026_31431_gate() {
     local status
 
@@ -230,13 +345,72 @@ enforce_cve_2026_31431_gate() {
     esac
 }
 
+enforce_dirtyfrag_gate() {
+    local esp_status rxrpc_status
+
+    esp_status="$(dirtyfrag_esp_status "${KERNEL_VERSION}")"
+    case "${esp_status}" in
+        vulnerable)
+            if dirtyfrag_esp_repo_backport_applies "${KERNEL_VERSION}" \
+                && [[ -f "${SECURITY_DIR}/${DIRTYFRAG_ESP_PATCH}" ]]; then
+                APPLY_DIRTYFRAG_ESP_PATCH=1
+                echo ">>> Dirty Frag ESP: ${KERNEL_VERSION} is vulnerable; applying ${DIRTYFRAG_ESP_PATCH}."
+            elif [[ "${LINUX_XR_ALLOW_DIRTYFRAG:-}" == "1" ]]; then
+                echo "WARNING: building ${KERNEL_VERSION} despite Dirty Frag ESP vulnerable range."
+            else
+                echo "ERROR: refusing to build ${KERNEL_VERSION}; Dirty Frag ESP status is vulnerable and no repo-managed backport route is enabled." >&2
+                echo "ERROR: use a fixed upstream floor, port ${DIRTYFRAG_ESP_PATCH}, or set LINUX_XR_ALLOW_DIRTYFRAG=1 only for explicit validation." >&2
+                exit 1
+            fi
+            ;;
+        unknown)
+            if [[ "${LINUX_XR_ALLOW_DIRTYFRAG:-}" == "1" ]]; then
+                echo "WARNING: Dirty Frag ESP fixed status is unknown for ${KERNEL_VERSION}; override accepted."
+            else
+                echo "ERROR: Dirty Frag ESP fixed status is unknown for ${KERNEL_VERSION}." >&2
+                echo "ERROR: update the security gate or set LINUX_XR_ALLOW_DIRTYFRAG=1 for an explicit validation build." >&2
+                exit 1
+            fi
+            ;;
+    esac
+
+    rxrpc_status="$(dirtyfrag_rxrpc_status "${KERNEL_VERSION}")"
+    case "${rxrpc_status}" in
+        vulnerable)
+            if dirtyfrag_rxrpc_repo_backport_applies "${KERNEL_VERSION}" \
+                && [[ -f "${SECURITY_DIR}/${DIRTYFRAG_RXRPC_PATCH}" ]]; then
+                APPLY_DIRTYFRAG_RXRPC_PATCH=1
+                echo ">>> Dirty Frag RxRPC: ${KERNEL_VERSION} is vulnerable; applying ${DIRTYFRAG_RXRPC_PATCH}."
+            elif [[ "${LINUX_XR_ALLOW_DIRTYFRAG:-}" == "1" ]]; then
+                echo "WARNING: building ${KERNEL_VERSION} despite Dirty Frag RxRPC vulnerable range."
+            else
+                echo "ERROR: refusing to build ${KERNEL_VERSION}; Dirty Frag RxRPC status is vulnerable and no repo-managed backport route is enabled." >&2
+                echo "ERROR: use a fixed upstream floor, port ${DIRTYFRAG_RXRPC_PATCH}, or set LINUX_XR_ALLOW_DIRTYFRAG=1 only for explicit validation." >&2
+                exit 1
+            fi
+            ;;
+        unknown)
+            if [[ "${LINUX_XR_ALLOW_DIRTYFRAG:-}" == "1" ]]; then
+                echo "WARNING: Dirty Frag RxRPC fixed status is unknown for ${KERNEL_VERSION}; override accepted."
+            else
+                echo "ERROR: Dirty Frag RxRPC fixed status is unknown for ${KERNEL_VERSION}." >&2
+                echo "ERROR: update the security gate or set LINUX_XR_ALLOW_DIRTYFRAG=1 for an explicit validation build." >&2
+                exit 1
+            fi
+            ;;
+    esac
+}
+
 enforce_cve_2026_31431_gate
+enforce_dirtyfrag_gate
 
 echo "=== linux-xr kernel build ==="
 echo "  Kernel:  ${KERNEL_VERSION}"
 echo "  Release: ${KRELEASE}"
 echo "  RT:      ${RT_VERSION:-disabled}"
 echo "  CVE-2026-31431 backport: ${APPLY_CVE_2026_31431_PATCH}"
+echo "  Dirty Frag ESP backport: ${APPLY_DIRTYFRAG_ESP_PATCH}"
+echo "  Dirty Frag RxRPC backport: ${APPLY_DIRTYFRAG_RXRPC_PATCH}"
 echo ""
 
 if [[ "${SECURITY_PREFLIGHT_ONLY}" == "1" ]]; then
@@ -328,6 +502,28 @@ if [[ "${APPLY_CVE_2026_31431_PATCH}" == "1" ]]; then
         "${RPMBUILD}/SOURCES/${CVE_2026_31431_PATCH}"
 fi
 
+if [[ "${APPLY_DIRTYFRAG_ESP_PATCH}" == "1" ]]; then
+    echo ">>> Staging Dirty Frag ESP backport from ${SECURITY_DIR}..."
+    if [[ ! -f "${SECURITY_DIR}/${DIRTYFRAG_ESP_PATCH}" ]]; then
+        echo "ERROR: missing security patch ${SECURITY_DIR}/${DIRTYFRAG_ESP_PATCH}"
+        exit 1
+    fi
+    install -m 0644 \
+        "${SECURITY_DIR}/${DIRTYFRAG_ESP_PATCH}" \
+        "${RPMBUILD}/SOURCES/${DIRTYFRAG_ESP_PATCH}"
+fi
+
+if [[ "${APPLY_DIRTYFRAG_RXRPC_PATCH}" == "1" ]]; then
+    echo ">>> Staging Dirty Frag RxRPC backport from ${SECURITY_DIR}..."
+    if [[ ! -f "${SECURITY_DIR}/${DIRTYFRAG_RXRPC_PATCH}" ]]; then
+        echo "ERROR: missing security patch ${SECURITY_DIR}/${DIRTYFRAG_RXRPC_PATCH}"
+        exit 1
+    fi
+    install -m 0644 \
+        "${SECURITY_DIR}/${DIRTYFRAG_RXRPC_PATCH}" \
+        "${RPMBUILD}/SOURCES/${DIRTYFRAG_RXRPC_PATCH}"
+fi
+
 # --- Step 5: Copy base config ---
 echo ">>> Copying base config..."
 if [[ -f "${XR_DIR}/config/base.config" ]]; then
@@ -356,6 +552,8 @@ DEFINES=(
     --define "kversion ${KERNEL_VERSION}"
     --define "xr_release ${XR_RELEASE}"
     --define "apply_cve_2026_31431_patch ${APPLY_CVE_2026_31431_PATCH}"
+    --define "apply_dirtyfrag_esp_patch ${APPLY_DIRTYFRAG_ESP_PATCH}"
+    --define "apply_dirtyfrag_rxrpc_patch ${APPLY_DIRTYFRAG_RXRPC_PATCH}"
 )
 
 if [[ -n "${RT_VERSION}" ]]; then

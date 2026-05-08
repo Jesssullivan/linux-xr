@@ -14,6 +14,9 @@ CVE_2026_31431_MAINLINE_FIX="a664bf3d603dc3bdcf9ae47cc21e0daec706d7a5"
 CVE_2026_31431_6_19_FIX="ce42ee423e58dffa5ec03524054c9d8bfd4f6237"
 CVE_2026_31431_6_18_FIX="fafe0fa2995a0f7073c1c358d7d3145bcc9aedd8"
 CVE_2026_31431_PATCH="cve-2026-31431-algif-aead.patch"
+DIRTYFRAG_ESP_FIX="f4c50a4034e62ab75f1d5cdd191dd5f9c77fdff4"
+DIRTYFRAG_ESP_PATCH="dirtyfrag-esp-shared-frag.patch"
+DIRTYFRAG_RXRPC_PATCH="dirtyfrag-rxrpc-linearize.patch"
 
 BASE_REF="HEAD"
 UPSTREAM_REF=""
@@ -164,6 +167,18 @@ series_apply_status() {
 
 default_kernel_version() {
     sed -nE 's/^KERNEL_VERSION="([^"]+)"/\1/p' "${BUILD_SCRIPT}" | head -n 1
+}
+
+kernel_version_triplet() {
+    local version="$1"
+    local core major minor patch
+
+    core="${version%%-*}"
+    IFS=. read -r major minor patch _ <<< "${core}"
+    patch="${patch:-0}"
+
+    [[ "${major}" =~ ^[0-9]+$ && "${minor}" =~ ^[0-9]+$ && "${patch}" =~ ^[0-9]+$ ]] || return 1
+    echo "${major} ${minor} ${patch}"
 }
 
 cve_2026_31431_version_status() {
@@ -343,6 +358,151 @@ cve_2026_31431_build_route_status() {
     esac
 }
 
+security_patch_status() {
+    local patch="$1"
+
+    if [[ -f "${SECURITY_DIR}/${patch}" ]]; then
+        echo "present"
+    else
+        echo "missing"
+    fi
+}
+
+dirtyfrag_esp_version_status() {
+    local version="$1"
+    local major minor patch
+
+    if [[ "${version}" == *-rc* ]]; then
+        echo "vulnerable"
+        return
+    fi
+
+    if ! read -r major minor patch < <(kernel_version_triplet "${version}"); then
+        echo "unknown"
+        return
+    fi
+
+    if (( major == 7 && minor == 0 )); then
+        if (( patch >= 5 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 6 && (minor == 18 || minor == 19) )); then
+        echo "vulnerable"
+        return
+    fi
+
+    echo "unknown"
+}
+
+dirtyfrag_esp_repo_backport_applies() {
+    local version="$1"
+    local major minor patch
+
+    [[ "${version}" != *-rc* ]] || return 1
+
+    if ! read -r major minor patch < <(kernel_version_triplet "${version}"); then
+        return 1
+    fi
+
+    (( major == 6 && (minor == 18 || minor == 19) )) ||
+        (( major == 7 && minor == 0 && patch < 5 ))
+}
+
+dirtyfrag_esp_build_route_status() {
+    local version="$1"
+    local version_status
+
+    version_status="$(dirtyfrag_esp_version_status "${version}")"
+    case "${version_status}" in
+        fixed)
+            echo "fixed-base"
+            ;;
+        vulnerable)
+            if dirtyfrag_esp_repo_backport_applies "${version}"; then
+                if [[ "$(security_patch_status "${DIRTYFRAG_ESP_PATCH}")" == "present" ]]; then
+                    echo "repo-backport-applied-by-build"
+                else
+                    echo "backport-missing"
+                fi
+            else
+                echo "vulnerable"
+            fi
+            ;;
+        *)
+            echo "${version_status}"
+            ;;
+    esac
+}
+
+dirtyfrag_rxrpc_version_status() {
+    local version="$1"
+    local major minor patch
+
+    if [[ "${version}" == *-rc* ]]; then
+        echo "vulnerable"
+        return
+    fi
+
+    if ! read -r major minor patch < <(kernel_version_triplet "${version}"); then
+        echo "unknown"
+        return
+    fi
+
+    if (( major == 7 && minor == 0 )); then
+        echo "vulnerable"
+        return
+    fi
+
+    if (( major == 6 && (minor == 18 || minor == 19) )); then
+        echo "vulnerable"
+        return
+    fi
+
+    echo "unknown"
+}
+
+dirtyfrag_rxrpc_repo_backport_applies() {
+    local version="$1"
+    local major minor patch
+
+    [[ "${version}" != *-rc* ]] || return 1
+
+    if ! read -r major minor patch < <(kernel_version_triplet "${version}"); then
+        return 1
+    fi
+
+    (( major == 6 && (minor == 18 || minor == 19) )) ||
+        (( major == 7 && minor == 0 ))
+}
+
+dirtyfrag_rxrpc_build_route_status() {
+    local version="$1"
+    local version_status
+
+    version_status="$(dirtyfrag_rxrpc_version_status "${version}")"
+    case "${version_status}" in
+        vulnerable)
+            if dirtyfrag_rxrpc_repo_backport_applies "${version}"; then
+                if [[ "$(security_patch_status "${DIRTYFRAG_RXRPC_PATCH}")" == "present" ]]; then
+                    echo "repo-backport-applied-by-build"
+                else
+                    echo "backport-missing"
+                fi
+            else
+                echo "vulnerable"
+            fi
+            ;;
+        *)
+            echo "${version_status}"
+            ;;
+    esac
+}
+
 ref_contains_commit() {
     local ref="$1"
     local commit="$2"
@@ -456,6 +616,13 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo "| CVE-2026-31431 repo backport \`${CVE_2026_31431_PATCH}\` | \`$(cve_2026_31431_repo_backport_status)\` |"
     echo "| CVE-2026-31431 default build route | \`$(cve_2026_31431_build_route_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
     echo "| CVE-2026-31431 upstream/mainline fix \`${CVE_2026_31431_MAINLINE_FIX:0:12}\` in upstream ref | \`$(ref_contains_commit "${UPSTREAM_REF}" "${CVE_2026_31431_MAINLINE_FIX}")\` |"
+    echo "| Dirty Frag ESP default base kernel \`${DEFAULT_KERNEL_VERSION:-unavailable}\` | \`$(dirtyfrag_esp_version_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
+    echo "| Dirty Frag ESP repo backport \`${DIRTYFRAG_ESP_PATCH}\` | \`$(security_patch_status "${DIRTYFRAG_ESP_PATCH}")\` |"
+    echo "| Dirty Frag ESP default build route | \`$(dirtyfrag_esp_build_route_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
+    echo "| Dirty Frag ESP upstream fix \`${DIRTYFRAG_ESP_FIX:0:12}\` in upstream ref | \`$(ref_contains_commit "${UPSTREAM_REF}" "${DIRTYFRAG_ESP_FIX}")\` |"
+    echo "| Dirty Frag RxRPC default base kernel \`${DEFAULT_KERNEL_VERSION:-unavailable}\` | \`$(dirtyfrag_rxrpc_version_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
+    echo "| Dirty Frag RxRPC repo backport \`${DIRTYFRAG_RXRPC_PATCH}\` | \`$(security_patch_status "${DIRTYFRAG_RXRPC_PATCH}")\` |"
+    echo "| Dirty Frag RxRPC default build route | \`$(dirtyfrag_rxrpc_build_route_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
     if [[ "${#STABLE_REFS[@]}" -gt 0 ]]; then
         for stable_ref in "${STABLE_REFS[@]}"; do
             echo "| CVE-2026-31431 fix in candidate ref \`${stable_ref}\` | \`$(cve_2026_31431_ref_fix_status "${stable_ref}")\` |"
@@ -466,6 +633,7 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo
     echo "Known fixed floors for this gate include: \`5.10.254+\`, \`5.15.204+\`, \`6.1.170+\`, \`6.6.137+\`, \`6.12.85+\`, \`6.18.22+\`, \`6.19.12+\`, and \`7.0+\`."
     echo "For vulnerable \`6.19.x\` bases, \`build-rpm.sh\` applies the repo backport when present."
+    echo "Dirty Frag ESP is tracked as fixed in \`7.0.5+\` for the \`7.0.x\` lane; Dirty Frag RxRPC has no upstream fixed floor recorded here yet, so supported bases rely on the repo backport."
     echo
     echo "## Carry Apply Triage"
     echo
@@ -503,7 +671,7 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo
     echo "## Next Actions"
     echo
-    echo "1. Resolve any \`vulnerable\`, \`backport-missing\`, or \`unknown\` default build route before release work."
+    echo "1. Resolve any \`vulnerable\`, \`backport-missing\`, or \`unknown\` security build route before release work."
     echo "2. Inspect the upstream-only commit list for merge candidates or conflicts."
     echo "3. Check whether every patch in \`xr/patches/series\` still applies cleanly."
     echo "4. Build both generic and RT variants if the carry set is unchanged."
