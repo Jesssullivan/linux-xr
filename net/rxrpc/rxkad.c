@@ -567,23 +567,30 @@ static int rxkad_verify_packet_2(struct rxrpc_call *call, struct sk_buff *skb,
  */
 static int rxkad_verify_packet(struct rxrpc_call *call, struct sk_buff *skb)
 {
-	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
+	struct rxrpc_skb_priv *sp;
 	struct skcipher_request	*req;
 	struct rxrpc_crypt iv;
 	struct scatterlist sg;
 	union {
 		__be32 buf[2];
 	} crypto __aligned(8);
-	rxrpc_seq_t seq = sp->hdr.seq;
+	rxrpc_seq_t seq;
 	int ret;
 	u16 cksum;
 	u32 x, y;
 
-	_enter("{%d{%x}},{#%u}",
-	       call->debug_id, key_serial(call->conn->key), seq);
-
 	if (!call->conn->rxkad.cipher)
 		return 0;
+
+	if (call->conn->security_level != RXRPC_SECURITY_PLAIN &&
+	    skb_linearize_cow(skb) < 0)
+		return -ENOMEM;
+
+	sp = rxrpc_skb(skb);
+	seq = sp->hdr.seq;
+
+	_enter("{%d{%x}},{#%u}",
+	       call->debug_id, key_serial(call->conn->key), seq);
 
 	req = rxkad_get_call_crypto(call);
 	if (!req)

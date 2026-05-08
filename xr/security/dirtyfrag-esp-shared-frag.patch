@@ -1,0 +1,30 @@
+diff --git a/net/ipv4/esp4.c b/net/ipv4/esp4.c
+index 2c922afadb8f6..ba3743ea78cb1 100644
+--- a/net/ipv4/esp4.c
++++ b/net/ipv4/esp4.c
+@@ -873 +873,2 @@ static int esp_input(struct xfrm_state *x, struct sk_buff *skb)
+-		} else if (!skb_has_frag_list(skb)) {
++		} else if (!skb_has_frag_list(skb) &&
++			   !skb_has_shared_frag(skb)) {
+diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
+index e4790cc7b5c2e..5bcd73cbdb41c 100644
+--- a/net/ipv4/ip_output.c
++++ b/net/ipv4/ip_output.c
+@@ -1235,0 +1236,2 @@ static int __ip_append_data(struct sock *sk,
++			if (!(flags & MSG_NO_SHARED_FRAGS))
++				skb_shinfo(skb)->flags |= SKBFL_SHARED_FRAG;
+diff --git a/net/ipv6/esp6.c b/net/ipv6/esp6.c
+index e75da98f52838..116582d6985f2 100644
+--- a/net/ipv6/esp6.c
++++ b/net/ipv6/esp6.c
+@@ -915 +915,2 @@ static int esp6_input(struct xfrm_state *x, struct sk_buff *skb)
+-		} else if (!skb_has_frag_list(skb)) {
++		} else if (!skb_has_frag_list(skb) &&
++			   !skb_has_shared_frag(skb)) {
+diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
+index 8e2a6b28cea7a..3f14e363c96e2 100644
+--- a/net/ipv6/ip6_output.c
++++ b/net/ipv6/ip6_output.c
+@@ -1767,0 +1768,2 @@ static int __ip6_append_data(struct sock *sk,
++			if (!(flags & MSG_NO_SHARED_FRAGS))
++				skb_shinfo(skb)->flags |= SKBFL_SHARED_FRAG;

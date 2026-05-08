@@ -19,6 +19,8 @@
 %{!?rt_version: %global rt_version %{nil}}
 %{!?variant: %global variant %{nil}}
 %{!?apply_cve_2026_31431_patch: %global apply_cve_2026_31431_patch 0}
+%{!?apply_dirtyfrag_esp_patch: %global apply_dirtyfrag_esp_patch 0}
+%{!?apply_dirtyfrag_rxrpc_patch: %global apply_dirtyfrag_rxrpc_patch 0}
 %if "%{variant}" == "-rt"
 %global actual_krel_regex ^%{kversion}-rt[^[:space:]]*-%{krelease}$
 %else
@@ -41,6 +43,12 @@ Patch0:         0007-vesa-dsc-bpp.patch
 Patch1:         bigscreen-beyond-edid.patch
 %if 0%{?apply_cve_2026_31431_patch}
 Patch2:         cve-2026-31431-algif-aead.patch
+%endif
+%if 0%{?apply_dirtyfrag_esp_patch}
+Patch3:         dirtyfrag-esp-shared-frag.patch
+%endif
+%if 0%{?apply_dirtyfrag_rxrpc_patch}
+Patch4:         dirtyfrag-rxrpc-linearize.patch
 %endif
 
 BuildRequires:  gcc
@@ -76,6 +84,12 @@ on AMD GPUs (RDNA2+). Includes:
 %if 0%{?apply_cve_2026_31431_patch}
 - CVE-2026-31431 algif_aead backport
 %endif
+%if 0%{?apply_dirtyfrag_esp_patch}
+- Dirty Frag ESP shared-frag hardening
+%endif
+%if 0%{?apply_dirtyfrag_rxrpc_patch}
+- Dirty Frag RxRPC RXKAD in-place decrypt hardening
+%endif
 %if "%{rt_version}" != ""
 - PREEMPT_RT real-time scheduling (%{rt_version})
 %endif
@@ -101,6 +115,12 @@ Userspace API header files for kernel-xr %{kversion}-%{krelease}.
 # Apply security backports before RT and XR carry patches.
 %if 0%{?apply_cve_2026_31431_patch}
 %patch -P2 -p1
+%endif
+%if 0%{?apply_dirtyfrag_esp_patch}
+%patch -P3 -p1
+%endif
+%if 0%{?apply_dirtyfrag_rxrpc_patch}
+%patch -P4 -p1
 %endif
 
 # Apply RT patch first (if building RT kernel)
