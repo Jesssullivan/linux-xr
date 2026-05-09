@@ -271,6 +271,7 @@ jobs:
             - `cve-2026-31431-algif-aead.patch` — applied automatically for vulnerable 6.19.x bases
             - `dirtyfrag-esp-shared-frag.patch` — applied automatically for CVE-2026-43284 Dirty Frag ESP-affected bases
             - `dirtyfrag-rxrpc-linearize.patch` — applied automatically for reserved CVE-2026-43500 Dirty Frag RxRPC-affected bases
+            - `dirtyfrag-rxrpc-rxgk-linearize.patch` — applied automatically with the RxRPC route on RXGK-capable affected bases
             - PREEMPT_RT (RT variant only)
 
             ### Install

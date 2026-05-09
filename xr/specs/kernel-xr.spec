@@ -21,6 +21,7 @@
 %{!?apply_cve_2026_31431_patch: %global apply_cve_2026_31431_patch 0}
 %{!?apply_dirtyfrag_esp_patch: %global apply_dirtyfrag_esp_patch 0}
 %{!?apply_dirtyfrag_rxrpc_patch: %global apply_dirtyfrag_rxrpc_patch 0}
+%{!?apply_dirtyfrag_rxrpc_rxgk_patch: %global apply_dirtyfrag_rxrpc_rxgk_patch 0}
 %if "%{variant}" == "-rt"
 %global actual_krel_regex ^%{kversion}-rt[^[:space:]]*-%{krelease}$
 %else
@@ -49,6 +50,9 @@ Patch3:         dirtyfrag-esp-shared-frag.patch
 %endif
 %if 0%{?apply_dirtyfrag_rxrpc_patch}
 Patch4:         dirtyfrag-rxrpc-linearize.patch
+%endif
+%if 0%{?apply_dirtyfrag_rxrpc_rxgk_patch}
+Patch5:         dirtyfrag-rxrpc-rxgk-linearize.patch
 %endif
 
 BuildRequires:  gcc
@@ -90,6 +94,9 @@ on AMD GPUs (RDNA2+). Includes:
 %if 0%{?apply_dirtyfrag_rxrpc_patch}
 - CVE-2026-43500 Dirty Frag RxRPC RXKAD in-place decrypt hardening
 %endif
+%if 0%{?apply_dirtyfrag_rxrpc_rxgk_patch}
+- CVE-2026-43500 Dirty Frag RxRPC RXGK in-place decrypt hardening
+%endif
 %if "%{rt_version}" != ""
 - PREEMPT_RT real-time scheduling (%{rt_version})
 %endif
@@ -121,6 +128,9 @@ Userspace API header files for kernel-xr %{kversion}-%{krelease}.
 %endif
 %if 0%{?apply_dirtyfrag_rxrpc_patch}
 %patch -P4 -p1
+%endif
+%if 0%{?apply_dirtyfrag_rxrpc_rxgk_patch}
+%patch -P5 -p1
 %endif
 
 # Apply RT patch first (if building RT kernel)

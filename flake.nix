@@ -73,6 +73,9 @@
 
             test -f "$series_file"
             test -f "$security_dir/cve-2026-31431-algif-aead.patch"
+            test -f "$security_dir/dirtyfrag-esp-shared-frag.patch"
+            test -f "$security_dir/dirtyfrag-rxrpc-linearize.patch"
+            test -f "$security_dir/dirtyfrag-rxrpc-rxgk-linearize.patch"
 
             while IFS= read -r patch; do
               case "$patch" in
