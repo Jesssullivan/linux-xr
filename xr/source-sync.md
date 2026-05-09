@@ -9,11 +9,16 @@ As of 2026-05-09:
 
 - Current lab release line: `v6.19.5-xr10` is published and boot-proven on
   `mbp-13` and `honey`
+- Current merged build candidate: `v6.19.5-xr11` from `xr/main` commit
+  `3b55106d`, carrying `CVE-2026-31431`, `CVE-2026-43284`, and both
+  `CVE-2026-43500` RxRPC RXKAD/RXGK backports. It should not replace `xr10`
+  in rollout docs until generic and RT artifacts are uploaded and target hosts
+  boot the exact `6.19.5-11.xr.el10` kernel.
 - Bounded EOL compatibility proof target: `v6.19.14`
 - Maintained generic candidate targets: `v7.0.5` stable and `v6.18.28` longterm
 - Longterm fallback watch: `v6.12.87`, still pending a successful RPM proof.
   `6.12.87` has `CVE-2026-43284` ESP fixed natively and now has a
-  repo-managed reserved-`CVE-2026-43500` RxRPC build route. The zero-fuzz DSC
+  repo-managed `CVE-2026-43500` RxRPC build route. The zero-fuzz DSC
   carry conflict is fixed; the next proof gate is preserving the
   `CONFIG_FW_LOADER_USER_HELPER=n` systemd/Rocky boot contract on this older
   Kconfig while allowing hardening symbols that do not exist yet in `6.12.y` to
@@ -62,9 +67,9 @@ Required checks before moving build defaults or release tags:
 ```
 
 The `6.12.87` tarball contains the `CVE-2026-43284` ESP shared-frag hardening,
-but the `rxkad.c` tree does not contain the reserved-`CVE-2026-43500` Dirty
-Frag RxRPC linearize/COW hardening. Newer RXGK-capable bases also need the
-linux-xr RXGK response/DATA hardening until an upstream fixed floor is proven.
+but the `rxkad.c` tree does not contain the `CVE-2026-43500` Dirty Frag RxRPC
+linearize/COW hardening. Newer RXGK-capable bases also need the linux-xr RXGK
+response/DATA hardening until an upstream fixed floor is proven.
 Do not promote `6.12.87` as a linux-xr fallback until a real RPM proof succeeds
 with the RxRPC security route and the systemd/Rocky firmware-loader helper
 guard intact.
