@@ -20,6 +20,8 @@ SERIES_FILE="${PATCH_DIR}/series"
 SECURITY_DIR="${XR_DIR}/security"
 SECURITY_CONFIG_CHECK="${XR_DIR}/scripts/check-security-config.sh"
 CVE_2026_31431_PATCH="cve-2026-31431-algif-aead.patch"
+DIRTYFRAG_ESP_CVE="CVE-2026-43284"
+DIRTYFRAG_RXRPC_CVE="CVE-2026-43500"
 DIRTYFRAG_ESP_PATCH="dirtyfrag-esp-shared-frag.patch"
 DIRTYFRAG_RXRPC_PATCH="dirtyfrag-rxrpc-linearize.patch"
 APPLY_CVE_2026_31431_PATCH=0
@@ -244,16 +246,90 @@ dirtyfrag_esp_status() {
         return
     fi
 
-    if (( major == 6 && minor == 12 )); then
-        if (( patch >= 87 )); then
-            echo "fixed"
-        else
-            echo "vulnerable"
-        fi
+    if (( major == 6 && minor == 19 )); then
+        echo "vulnerable"
         return
     fi
 
-    if (( major == 6 && (minor == 18 || minor == 19) )); then
+    if (( major == 6 )); then
+        case "${minor}" in
+            18)
+                if (( patch >= 28 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            13|14|15|16|17)
+                echo "vulnerable"
+                ;;
+            12)
+                if (( patch >= 87 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            7|8|9|10|11)
+                echo "vulnerable"
+                ;;
+            6)
+                if (( patch >= 138 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            2|3|4|5)
+                echo "vulnerable"
+                ;;
+            1)
+                if (( patch >= 171 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            0)
+                echo "vulnerable"
+                ;;
+            *)
+                echo "unknown"
+                ;;
+        esac
+        return
+    fi
+
+    if (( major == 5 )); then
+        case "${minor}" in
+            16|17|18|19)
+                echo "vulnerable"
+                ;;
+            15)
+                if (( patch >= 205 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            12|13|14)
+                echo "vulnerable"
+                ;;
+            10)
+                if (( patch >= 255 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            *)
+                echo "unknown"
+                ;;
+        esac
+        return
+    fi
+
+    if (( major == 4 && minor >= 11 )); then
         echo "vulnerable"
         return
     fi
@@ -271,7 +347,8 @@ dirtyfrag_esp_repo_backport_applies() {
         return 1
     fi
 
-    (( major == 6 && (minor == 18 || minor == 19) )) ||
+    (( major == 6 && minor == 18 && patch < 28 )) ||
+        (( major == 6 && minor == 19 )) ||
         (( major == 7 && minor == 0 && patch < 5 ))
 }
 
@@ -368,20 +445,20 @@ enforce_dirtyfrag_gate() {
             if dirtyfrag_esp_repo_backport_applies "${KERNEL_VERSION}" \
                 && [[ -f "${SECURITY_DIR}/${DIRTYFRAG_ESP_PATCH}" ]]; then
                 APPLY_DIRTYFRAG_ESP_PATCH=1
-                echo ">>> Dirty Frag ESP: ${KERNEL_VERSION} is vulnerable; applying ${DIRTYFRAG_ESP_PATCH}."
+                echo ">>> ${DIRTYFRAG_ESP_CVE} Dirty Frag ESP: ${KERNEL_VERSION} is vulnerable; applying ${DIRTYFRAG_ESP_PATCH}."
             elif [[ "${LINUX_XR_ALLOW_DIRTYFRAG:-}" == "1" ]]; then
-                echo "WARNING: building ${KERNEL_VERSION} despite Dirty Frag ESP vulnerable range."
+                echo "WARNING: building ${KERNEL_VERSION} despite ${DIRTYFRAG_ESP_CVE} Dirty Frag ESP vulnerable range."
             else
-                echo "ERROR: refusing to build ${KERNEL_VERSION}; Dirty Frag ESP status is vulnerable and no repo-managed backport route is enabled." >&2
+                echo "ERROR: refusing to build ${KERNEL_VERSION}; ${DIRTYFRAG_ESP_CVE} Dirty Frag ESP status is vulnerable and no repo-managed backport route is enabled." >&2
                 echo "ERROR: use a fixed upstream floor, port ${DIRTYFRAG_ESP_PATCH}, or set LINUX_XR_ALLOW_DIRTYFRAG=1 only for explicit validation." >&2
                 exit 1
             fi
             ;;
         unknown)
             if [[ "${LINUX_XR_ALLOW_DIRTYFRAG:-}" == "1" ]]; then
-                echo "WARNING: Dirty Frag ESP fixed status is unknown for ${KERNEL_VERSION}; override accepted."
+                echo "WARNING: ${DIRTYFRAG_ESP_CVE} Dirty Frag ESP fixed status is unknown for ${KERNEL_VERSION}; override accepted."
             else
-                echo "ERROR: Dirty Frag ESP fixed status is unknown for ${KERNEL_VERSION}." >&2
+                echo "ERROR: ${DIRTYFRAG_ESP_CVE} Dirty Frag ESP fixed status is unknown for ${KERNEL_VERSION}." >&2
                 echo "ERROR: update the security gate or set LINUX_XR_ALLOW_DIRTYFRAG=1 for an explicit validation build." >&2
                 exit 1
             fi
@@ -394,20 +471,20 @@ enforce_dirtyfrag_gate() {
             if dirtyfrag_rxrpc_repo_backport_applies "${KERNEL_VERSION}" \
                 && [[ -f "${SECURITY_DIR}/${DIRTYFRAG_RXRPC_PATCH}" ]]; then
                 APPLY_DIRTYFRAG_RXRPC_PATCH=1
-                echo ">>> Dirty Frag RxRPC: ${KERNEL_VERSION} is vulnerable; applying ${DIRTYFRAG_RXRPC_PATCH}."
+                echo ">>> ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC: ${KERNEL_VERSION} is vulnerable; applying ${DIRTYFRAG_RXRPC_PATCH}."
             elif [[ "${LINUX_XR_ALLOW_DIRTYFRAG:-}" == "1" ]]; then
-                echo "WARNING: building ${KERNEL_VERSION} despite Dirty Frag RxRPC vulnerable range."
+                echo "WARNING: building ${KERNEL_VERSION} despite ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC vulnerable range."
             else
-                echo "ERROR: refusing to build ${KERNEL_VERSION}; Dirty Frag RxRPC status is vulnerable and no repo-managed backport route is enabled." >&2
+                echo "ERROR: refusing to build ${KERNEL_VERSION}; ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC status is vulnerable and no repo-managed backport route is enabled." >&2
                 echo "ERROR: use a fixed upstream floor, port ${DIRTYFRAG_RXRPC_PATCH}, or set LINUX_XR_ALLOW_DIRTYFRAG=1 only for explicit validation." >&2
                 exit 1
             fi
             ;;
         unknown)
             if [[ "${LINUX_XR_ALLOW_DIRTYFRAG:-}" == "1" ]]; then
-                echo "WARNING: Dirty Frag RxRPC fixed status is unknown for ${KERNEL_VERSION}; override accepted."
+                echo "WARNING: ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC fixed status is unknown for ${KERNEL_VERSION}; override accepted."
             else
-                echo "ERROR: Dirty Frag RxRPC fixed status is unknown for ${KERNEL_VERSION}." >&2
+                echo "ERROR: ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC fixed status is unknown for ${KERNEL_VERSION}." >&2
                 echo "ERROR: update the security gate or set LINUX_XR_ALLOW_DIRTYFRAG=1 for an explicit validation build." >&2
                 exit 1
             fi

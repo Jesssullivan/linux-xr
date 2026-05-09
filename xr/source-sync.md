@@ -12,8 +12,9 @@ As of 2026-05-09:
 - Bounded EOL compatibility proof target: `v6.19.14`
 - Maintained generic candidate targets: `v7.0.5` stable and `v6.18.28` longterm
 - Longterm fallback watch: `v6.12.87`, currently blocked for linux-xr because
-  the DSC carry conflicts and Dirty Frag RxRPC has no repo-managed `6.12`
-  backport route
+  the RPM proof hit a zero-fuzz DSC carry conflict. `6.12.87` has
+  `CVE-2026-43284` ESP fixed natively and now has a repo-managed
+  reserved-`CVE-2026-43500` RxRPC build route.
 - RT candidate floor: `v7.0.1` with `patch-7.0.1-rt2`
 - RT blockers: newest stable `v7.0.5` has no matching RT patch yet; `v6.18.13-rt4` fails the CVE-2026-31431 gate because the repo does not carry a 6.18.13 backport
 
@@ -57,10 +58,11 @@ Required checks before moving build defaults or release tags:
 ./xr/scripts/build-rpm.sh --kernel-version 7.0.5 --xr-release 1 --security-preflight-only
 ```
 
-The `6.12.87` tarball contains the ESP shared-frag hardening, but the
-`rxkad.c` tree does not contain the Dirty Frag RxRPC linearize/COW hardening.
-Do not use `6.12.87` as a linux-xr fallback unless the DSC carry is refreshed
-and the RxRPC security route is resolved.
+The `6.12.87` tarball contains the `CVE-2026-43284` ESP shared-frag hardening,
+but the `rxkad.c` tree does not contain the reserved-`CVE-2026-43500` Dirty
+Frag RxRPC linearize/COW hardening. Do not promote `6.12.87` as a linux-xr
+fallback until the zero-fuzz DSC carry conflict is fixed and an RPM proof
+succeeds with the RxRPC security route applied.
 
 RT remains separate until a compatible RT patch is proven:
 
