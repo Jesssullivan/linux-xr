@@ -24,9 +24,11 @@ DIRTYFRAG_ESP_CVE="CVE-2026-43284"
 DIRTYFRAG_RXRPC_CVE="CVE-2026-43500"
 DIRTYFRAG_ESP_PATCH="dirtyfrag-esp-shared-frag.patch"
 DIRTYFRAG_RXRPC_PATCH="dirtyfrag-rxrpc-linearize.patch"
+DIRTYFRAG_RXRPC_RXGK_PATCH="dirtyfrag-rxrpc-rxgk-linearize.patch"
 APPLY_CVE_2026_31431_PATCH=0
 APPLY_DIRTYFRAG_ESP_PATCH=0
 APPLY_DIRTYFRAG_RXRPC_PATCH=0
+APPLY_DIRTYFRAG_RXRPC_RXGK_PATCH=0
 
 usage() {
     echo "Usage: $0 --kernel-version VER --xr-release REL [--rt-version RT_VER]"
@@ -403,6 +405,20 @@ dirtyfrag_rxrpc_repo_backport_applies() {
         (( major == 7 && minor == 0 ))
 }
 
+dirtyfrag_rxrpc_rxgk_repo_backport_applies() {
+    local version="$1"
+    local major minor patch
+
+    [[ "${version}" != *-rc* ]] || return 1
+
+    if ! read -r major minor patch < <(kernel_version_triplet "${version}"); then
+        return 1
+    fi
+
+    (( major == 6 && (minor == 18 || minor == 19) )) ||
+        (( major == 7 && minor == 0 ))
+}
+
 enforce_cve_2026_31431_gate() {
     local status
 
@@ -469,14 +485,22 @@ enforce_dirtyfrag_gate() {
     case "${rxrpc_status}" in
         vulnerable)
             if dirtyfrag_rxrpc_repo_backport_applies "${KERNEL_VERSION}" \
-                && [[ -f "${SECURITY_DIR}/${DIRTYFRAG_RXRPC_PATCH}" ]]; then
+                && [[ -f "${SECURITY_DIR}/${DIRTYFRAG_RXRPC_PATCH}" ]] \
+                && {
+                    ! dirtyfrag_rxrpc_rxgk_repo_backport_applies "${KERNEL_VERSION}" ||
+                        [[ -f "${SECURITY_DIR}/${DIRTYFRAG_RXRPC_RXGK_PATCH}" ]]
+                }; then
                 APPLY_DIRTYFRAG_RXRPC_PATCH=1
                 echo ">>> ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC: ${KERNEL_VERSION} is vulnerable; applying ${DIRTYFRAG_RXRPC_PATCH}."
+                if dirtyfrag_rxrpc_rxgk_repo_backport_applies "${KERNEL_VERSION}"; then
+                    APPLY_DIRTYFRAG_RXRPC_RXGK_PATCH=1
+                    echo ">>> ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC RXGK: applying ${DIRTYFRAG_RXRPC_RXGK_PATCH}."
+                fi
             elif [[ "${LINUX_XR_ALLOW_DIRTYFRAG:-}" == "1" ]]; then
                 echo "WARNING: building ${KERNEL_VERSION} despite ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC vulnerable range."
             else
                 echo "ERROR: refusing to build ${KERNEL_VERSION}; ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC status is vulnerable and no repo-managed backport route is enabled." >&2
-                echo "ERROR: use a fixed upstream floor, port ${DIRTYFRAG_RXRPC_PATCH}, or set LINUX_XR_ALLOW_DIRTYFRAG=1 only for explicit validation." >&2
+                echo "ERROR: use a fixed upstream floor, port ${DIRTYFRAG_RXRPC_PATCH}/${DIRTYFRAG_RXRPC_RXGK_PATCH}, or set LINUX_XR_ALLOW_DIRTYFRAG=1 only for explicit validation." >&2
                 exit 1
             fi
             ;;
@@ -502,6 +526,7 @@ echo "  RT:      ${RT_VERSION:-disabled}"
 echo "  CVE-2026-31431 backport: ${APPLY_CVE_2026_31431_PATCH}"
 echo "  Dirty Frag ESP backport: ${APPLY_DIRTYFRAG_ESP_PATCH}"
 echo "  Dirty Frag RxRPC backport: ${APPLY_DIRTYFRAG_RXRPC_PATCH}"
+echo "  Dirty Frag RxRPC RXGK backport: ${APPLY_DIRTYFRAG_RXRPC_RXGK_PATCH}"
 echo ""
 
 if [[ "${SECURITY_PREFLIGHT_ONLY}" == "1" ]]; then
@@ -615,6 +640,17 @@ if [[ "${APPLY_DIRTYFRAG_RXRPC_PATCH}" == "1" ]]; then
         "${RPMBUILD}/SOURCES/${DIRTYFRAG_RXRPC_PATCH}"
 fi
 
+if [[ "${APPLY_DIRTYFRAG_RXRPC_RXGK_PATCH}" == "1" ]]; then
+    echo ">>> Staging Dirty Frag RxRPC RXGK backport from ${SECURITY_DIR}..."
+    if [[ ! -f "${SECURITY_DIR}/${DIRTYFRAG_RXRPC_RXGK_PATCH}" ]]; then
+        echo "ERROR: missing security patch ${SECURITY_DIR}/${DIRTYFRAG_RXRPC_RXGK_PATCH}"
+        exit 1
+    fi
+    install -m 0644 \
+        "${SECURITY_DIR}/${DIRTYFRAG_RXRPC_RXGK_PATCH}" \
+        "${RPMBUILD}/SOURCES/${DIRTYFRAG_RXRPC_RXGK_PATCH}"
+fi
+
 # --- Step 5: Copy base config ---
 echo ">>> Copying base config..."
 if [[ -f "${XR_DIR}/config/base.config" ]]; then
@@ -645,6 +681,7 @@ DEFINES=(
     --define "apply_cve_2026_31431_patch ${APPLY_CVE_2026_31431_PATCH}"
     --define "apply_dirtyfrag_esp_patch ${APPLY_DIRTYFRAG_ESP_PATCH}"
     --define "apply_dirtyfrag_rxrpc_patch ${APPLY_DIRTYFRAG_RXRPC_PATCH}"
+    --define "apply_dirtyfrag_rxrpc_rxgk_patch ${APPLY_DIRTYFRAG_RXRPC_RXGK_PATCH}"
 )
 
 if [[ -n "${RT_VERSION}" ]]; then

@@ -63,9 +63,11 @@ Required checks before moving build defaults or release tags:
 
 The `6.12.87` tarball contains the `CVE-2026-43284` ESP shared-frag hardening,
 but the `rxkad.c` tree does not contain the reserved-`CVE-2026-43500` Dirty
-Frag RxRPC linearize/COW hardening. Do not promote `6.12.87` as a linux-xr
-fallback until a real RPM proof succeeds with the RxRPC security route and the
-systemd/Rocky firmware-loader helper guard intact.
+Frag RxRPC linearize/COW hardening. Newer RXGK-capable bases also need the
+linux-xr RXGK response/DATA hardening until an upstream fixed floor is proven.
+Do not promote `6.12.87` as a linux-xr fallback until a real RPM proof succeeds
+with the RxRPC security route and the systemd/Rocky firmware-loader helper
+guard intact.
 
 RT remains separate until a compatible RT patch is proven:
 

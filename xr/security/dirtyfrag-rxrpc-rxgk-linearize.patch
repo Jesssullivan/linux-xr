@@ -1,0 +1,48 @@
+--- a/net/rxrpc/rxgk.c
++++ b/net/rxrpc/rxgk.c
+@@ -578,10 +578,17 @@ static int rxgk_verify_packet_encrypted(struct rxrpc_call *call,
+  */
+ static int rxgk_verify_packet(struct rxrpc_call *call, struct sk_buff *skb)
+ {
+-	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
++	struct rxrpc_skb_priv *sp;
+ 	struct rxgk_context *gk;
+-	u16 key_number = sp->hdr.cksum;
++	u16 key_number;
+ 
++	if (call->conn->security_level != RXRPC_SECURITY_PLAIN &&
++	    skb_linearize_cow(skb) < 0)
++		return -ENOMEM;
++
++	sp = rxrpc_skb(skb);
++	key_number = sp->hdr.cksum;
++
+ 	_enter("{%d{%x}},{#%u}",
+ 	       call->debug_id, key_serial(call->conn->key), sp->hdr.seq);
+ 
+@@ -1188,17 +1195,23 @@ static int rxgk_verify_response(struct rxrpc_connection *conn,
+ {
+ 	const struct krb5_enctype *krb5;
+ 	struct rxrpc_key_token *token;
+-	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
++	struct rxrpc_skb_priv *sp;
+ 	struct rxgk_response rhdr;
+ 	struct rxgk_context *gk;
+ 	struct key *key = NULL;
+ 	unsigned int offset = sizeof(struct rxrpc_wire_header);
+-	unsigned int len = skb->len - sizeof(struct rxrpc_wire_header);
++	unsigned int len;
+ 	unsigned int token_offset, token_len;
+ 	unsigned int auth_offset, auth_len;
+ 	__be32 xauth_len;
+ 	int ret, ec;
+ 
++	if (skb_linearize_cow(skb) < 0)
++		return -ENOMEM;
++
++	sp = rxrpc_skb(skb);
++	len = skb->len - sizeof(struct rxrpc_wire_header);
++
+ 	_enter("{%d}", conn->debug_id);
+ 
+ 	/* Parse the RXGK_Response object */

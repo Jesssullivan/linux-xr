@@ -21,6 +21,7 @@ DIRTYFRAG_ESP_FIX="f4c50a4034e62ab75f1d5cdd191dd5f9c77fdff4"
 DIRTYFRAG_RXRPC_CVE="CVE-2026-43500"
 DIRTYFRAG_ESP_PATCH="dirtyfrag-esp-shared-frag.patch"
 DIRTYFRAG_RXRPC_PATCH="dirtyfrag-rxrpc-linearize.patch"
+DIRTYFRAG_RXRPC_RXGK_PATCH="dirtyfrag-rxrpc-rxgk-linearize.patch"
 
 BASE_REF="HEAD"
 UPSTREAM_REF=""
@@ -614,6 +615,20 @@ dirtyfrag_rxrpc_repo_backport_applies() {
         (( major == 7 && minor == 0 ))
 }
 
+dirtyfrag_rxrpc_rxgk_repo_backport_applies() {
+    local version="$1"
+    local major minor patch
+
+    [[ "${version}" != *-rc* ]] || return 1
+
+    if ! read -r major minor patch < <(kernel_version_triplet "${version}"); then
+        return 1
+    fi
+
+    (( major == 6 && (minor == 18 || minor == 19) )) ||
+        (( major == 7 && minor == 0 ))
+}
+
 dirtyfrag_rxrpc_build_route_status() {
     local version="$1"
     local version_status
@@ -622,10 +637,13 @@ dirtyfrag_rxrpc_build_route_status() {
     case "${version_status}" in
         vulnerable)
             if dirtyfrag_rxrpc_repo_backport_applies "${version}"; then
-                if [[ "$(security_patch_status "${DIRTYFRAG_RXRPC_PATCH}")" == "present" ]]; then
-                    echo "repo-backport-applied-by-build"
-                else
+                if [[ "$(security_patch_status "${DIRTYFRAG_RXRPC_PATCH}")" != "present" ]]; then
                     echo "backport-missing"
+                elif dirtyfrag_rxrpc_rxgk_repo_backport_applies "${version}" &&
+                    [[ "$(security_patch_status "${DIRTYFRAG_RXRPC_RXGK_PATCH}")" != "present" ]]; then
+                    echo "backport-missing"
+                else
+                    echo "repo-backport-applied-by-build"
                 fi
             else
                 echo "vulnerable"
@@ -759,6 +777,7 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo "| ${DIRTYFRAG_ESP_CVE} Dirty Frag ESP upstream fix \`${DIRTYFRAG_ESP_FIX:0:12}\` in upstream ref | \`$(ref_contains_commit "${UPSTREAM_REF}" "${DIRTYFRAG_ESP_FIX}")\` |"
     echo "| ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC default base kernel \`${DEFAULT_KERNEL_VERSION:-unavailable}\` | \`$(dirtyfrag_rxrpc_version_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
     echo "| ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC repo backport \`${DIRTYFRAG_RXRPC_PATCH}\` | \`$(security_patch_status "${DIRTYFRAG_RXRPC_PATCH}")\` |"
+    echo "| ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC RXGK repo backport \`${DIRTYFRAG_RXRPC_RXGK_PATCH}\` | \`$(security_patch_status "${DIRTYFRAG_RXRPC_RXGK_PATCH}")\` |"
     echo "| ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC default build route | \`$(dirtyfrag_rxrpc_build_route_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
     if [[ "${#STABLE_REFS[@]}" -gt 0 ]]; then
         for stable_ref in "${STABLE_REFS[@]}"; do
@@ -771,7 +790,7 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo "Known fixed floors for this gate include: \`5.10.254+\`, \`5.15.204+\`, \`6.1.170+\`, \`6.6.137+\`, \`6.12.85+\`, \`6.18.22+\`, \`6.19.12+\`, and \`7.0+\`."
     echo "For vulnerable \`6.19.x\` bases, \`build-rpm.sh\` applies the repo backport when present."
     echo "${DIRTYFRAG_ESP_CVE} Dirty Frag ESP fixed floors include \`5.10.255+\`, \`5.15.205+\`, \`6.1.171+\`, \`6.6.138+\`, \`6.12.87+\`, \`6.18.28+\`, and \`7.0.5+\`; the EOL \`6.19.x\` lab line stays conservative and uses the repo backport."
-    echo "${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC is reserved but not public in NVD/CVE.org in the last linux-xr check; no upstream fixed floor is recorded here yet, so supported bases rely on the repo backport."
+    echo "${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC is tracked by Debian security but not public in NVD/CVE.org in the last linux-xr check; no kernel.org upstream fixed floor is recorded here yet, so supported bases rely on the repo RXKAD/RXGK backports."
     echo
     echo "## Carry Apply Triage"
     echo
