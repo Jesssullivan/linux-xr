@@ -11,10 +11,12 @@ As of 2026-05-09:
   `mbp-13` and `honey`
 - Bounded EOL compatibility proof target: `v6.19.14`
 - Maintained generic candidate targets: `v7.0.5` stable and `v6.18.28` longterm
-- Longterm fallback watch: `v6.12.87`, currently blocked for linux-xr because
-  the RPM proof hit a zero-fuzz DSC carry conflict. `6.12.87` has
-  `CVE-2026-43284` ESP fixed natively and now has a repo-managed
-  reserved-`CVE-2026-43500` RxRPC build route.
+- Longterm fallback watch: `v6.12.87`, still pending a successful RPM proof.
+  `6.12.87` has `CVE-2026-43284` ESP fixed natively and now has a
+  repo-managed reserved-`CVE-2026-43500` RxRPC build route. The zero-fuzz DSC
+  carry conflict is fixed; the next proof gate is preserving the
+  `CONFIG_FW_LOADER_USER_HELPER=n` systemd/Rocky boot contract on this older
+  Kconfig.
 - RT candidate floor: `v7.0.1` with `patch-7.0.1-rt2`
 - RT blockers: newest stable `v7.0.5` has no matching RT patch yet; `v6.18.13-rt4` fails the CVE-2026-31431 gate because the repo does not carry a 6.18.13 backport
 
@@ -61,8 +63,8 @@ Required checks before moving build defaults or release tags:
 The `6.12.87` tarball contains the `CVE-2026-43284` ESP shared-frag hardening,
 but the `rxkad.c` tree does not contain the reserved-`CVE-2026-43500` Dirty
 Frag RxRPC linearize/COW hardening. Do not promote `6.12.87` as a linux-xr
-fallback until the zero-fuzz DSC carry conflict is fixed and an RPM proof
-succeeds with the RxRPC security route applied.
+fallback until a real RPM proof succeeds with the RxRPC security route and the
+systemd/Rocky firmware-loader helper guard intact.
 
 RT remains separate until a compatible RT patch is proven:
 
