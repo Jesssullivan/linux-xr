@@ -58,6 +58,21 @@ expect_value() {
     fi
 }
 
+expect_value_when_available() {
+    local key="$1"
+    local expected="$2"
+    local actual
+
+    actual="$(config_line "${key}")"
+    if [[ -z "${actual}" ]]; then
+        echo "  OK: ${key} absent in this kernel Kconfig"
+    elif [[ "${actual}" == "${key}=${expected}" ]]; then
+        echo "  OK: ${key}=${expected}"
+    else
+        fail_key "${key}" "${expected} when available" "${actual}"
+    fi
+}
+
 expect_disabled_or_absent() {
     local key="$1"
     local actual
@@ -131,7 +146,7 @@ expect_value CONFIG_EVM y
 # General hardening options that should not regress in this kernel lane.
 expect_value CONFIG_BPF_UNPRIV_DEFAULT_OFF y
 expect_value CONFIG_HARDENED_USERCOPY y
-expect_value CONFIG_HARDENED_USERCOPY_DEFAULT_ON y
+expect_value_when_available CONFIG_HARDENED_USERCOPY_DEFAULT_ON y
 expect_value CONFIG_SLAB_FREELIST_HARDENED y
 expect_value CONFIG_STRICT_DEVMEM y
 expect_value CONFIG_LSM_MMAP_MIN_ADDR 65535

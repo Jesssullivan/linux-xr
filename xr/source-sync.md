@@ -16,7 +16,8 @@ As of 2026-05-09:
   repo-managed reserved-`CVE-2026-43500` RxRPC build route. The zero-fuzz DSC
   carry conflict is fixed; the next proof gate is preserving the
   `CONFIG_FW_LOADER_USER_HELPER=n` systemd/Rocky boot contract on this older
-  Kconfig.
+  Kconfig while allowing hardening symbols that do not exist yet in `6.12.y` to
+  be absent rather than disabled.
 - RT candidate floor: `v7.0.1` with `patch-7.0.1-rt2`
 - RT blockers: newest stable `v7.0.5` has no matching RT patch yet; `v6.18.13-rt4` fails the CVE-2026-31431 gate because the repo does not carry a 6.18.13 backport
 
