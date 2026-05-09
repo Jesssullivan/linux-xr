@@ -322,7 +322,7 @@ dirtyfrag_rxrpc_repo_backport_applies() {
         return 1
     fi
 
-    (( major == 6 && (minor == 18 || minor == 19) )) ||
+    (( major == 6 && (minor == 12 || minor == 18 || minor == 19) )) ||
         (( major == 7 && minor == 0 ))
 }
 
