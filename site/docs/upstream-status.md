@@ -4,7 +4,7 @@ title: Upstream Status
 
 # Upstream Status
 
-Baseline date: 2026-05-08
+Baseline date: 2026-05-09
 
 ## Carry Set
 
@@ -31,15 +31,16 @@ Carry order is defined in `xr/patches/series`.
 
 ## Current Upstream Snapshot
 
-- linux-xr `xr/main`: `4add04b32ad3`
-- upstream `master` observed from GitHub: `917719c412c4`
+- linux-xr `xr/main`: `db6d3bd67436`
+- upstream `master` observed from kernel.org: `27a26ccfd528`
 - current stable observed on kernel.org: `v7.0.5`
 - current longterm candidates observed on kernel.org: `v6.18.28`, `v6.12.87`
 - latest `6.19.y` stable tag observed on kernel.org: `v6.19.14` `[EOL]`
 
-The current RPM lane still builds the configured `6.19.5` tarball. Moving the
-release lane forward should be a deliberate cadence item, not an incidental
-merge.
+The current RPM lane still builds the configured `6.19.5` tarball, now secured
+by repo-managed CVE-2026-31431 and Dirty Frag backports in the published
+`v6.19.5-xr10` release. Moving the source-sync lane forward should be a
+deliberate cadence item, not an incidental merge.
 
 `v6.19.14` remains a useful bounded compatibility proof because the generic
 linux-xr carry applies cleanly and the CVE security preflight passes, but it
@@ -51,6 +52,19 @@ for both. For RT, kernel.org currently exposes `patch-7.0.1-rt2` and
 while `6.18.13-rt4` fails the CVE-2026-31431 gate. Keep RT pinned to the
 current `v6.19.5-xr9` line until a compatible RT patchset or local RT refresh
 is proven and promoted deliberately.
+
+On the Dirty Frag front, Linus `master` now contains the ESP shared-frag fix as
+`f4c50a4034e6`. Current stable branch heads for `7.0.y`, `6.18.y`, and
+`6.12.y` also contain an equivalent ESP hardening commit, but the EOL `6.19.y`
+branch head does not. No `skb_linearize_cow()` RxRPC hardening was observed in
+`net/rxrpc/rxkad.c` on Linus `master` or the checked stable branch heads, so the
+linux-xr Dirty Frag RxRPC carry remains required for supported release bases.
+
+`v6.12.87` remains blocked as a linux-xr fallback: the tarball has the ESP
+shared-frag hardening, but the DSC carry conflicts and the RxRPC hardening has
+no repo-managed `6.12` backport route. The upstream triage helper now reports
+carry and security failures independently so this class of mixed failure stays
+visible.
 
 ## Boundary Notes
 

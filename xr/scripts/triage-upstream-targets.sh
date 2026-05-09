@@ -143,10 +143,40 @@ preflight_detail() {
         return
     fi
 
-    tail -n 8 "${log_file}" |
-        sed -n '/^ERROR:/p; /^===/p; /^>>> Security preflight complete/p; /^patch: \*\*\*\*/p' |
+    tail -n 20 "${log_file}" |
+        sed -n \
+            -e '/^ERROR:/p' \
+            -e '/^===/p' \
+            -e '/^>>> Security preflight complete/p' \
+            -e '/^patch: \*\*\*\*/p' \
+            -e '/hunk.*failed/p' \
+            -e '/out of .*hunks.*failed/p' \
+            -e '/malformed patch/p' \
+            -e "/can't find file/p" |
         tail -n 2 |
         paste -sd ' ' -
+}
+
+combined_preflight_detail() {
+    local carry_status="$1"
+    local carry_log="$2"
+    local security_status="$3"
+    local security_log="$4"
+    local carry_detail
+    local security_detail
+
+    carry_detail="$(preflight_detail "${carry_log}")"
+    security_detail="$(preflight_detail "${security_log}")"
+
+    if [[ "${carry_status}" == "pass" && "${security_status}" == "pass" ]]; then
+        echo "carry pass; security pass"
+    elif [[ "${carry_status}" != "pass" && "${security_status}" != "pass" ]]; then
+        echo "carry: ${carry_detail:-failed}; security: ${security_detail:-failed}"
+    elif [[ "${carry_status}" != "pass" ]]; then
+        echo "carry: ${carry_detail:-failed}"
+    else
+        echo "security: ${security_detail:-failed}"
+    fi
 }
 
 require_command git
@@ -196,10 +226,7 @@ trap 'rm -rf "${tmp_dir}" "${tmp_report}"' EXIT
             security_log="${tmp_dir}/generic-${version}-security.log"
             carry_status="$(run_preflight "${carry_log}" "${CHECK_CARRY}" --kernel-version "${version}")"
             security_status="$(run_preflight "${security_log}" "${BUILD_RPM}" --kernel-version "${version}" --xr-release 1 --security-preflight-only)"
-            detail="$(preflight_detail "${security_log}")"
-            if [[ -z "${detail}" ]]; then
-                detail="$(preflight_detail "${carry_log}")"
-            fi
+            detail="$(combined_preflight_detail "${carry_status}" "${carry_log}" "${security_status}" "${security_log}")"
         fi
 
         echo "| \`${family}.x\` | \`${tag:-unavailable}\` | \`${version}\` | \`${carry_status}\` | \`${security_status}\` | $(markdown_cell "${detail}") |"
@@ -231,10 +258,7 @@ trap 'rm -rf "${tmp_dir}" "${tmp_report}"' EXIT
                 security_log="${tmp_dir}/rt-${rt_version}-security.log"
                 carry_status="$(run_preflight "${carry_log}" "${CHECK_CARRY}" --kernel-version "${version}" --rt-version "${rt_version}")"
                 security_status="$(run_preflight "${security_log}" "${BUILD_RPM}" --kernel-version "${version}" --xr-release 1 --rt-version "${rt_version}" --security-preflight-only)"
-                detail="$(preflight_detail "${security_log}")"
-                if [[ -z "${detail}" ]]; then
-                    detail="$(preflight_detail "${carry_log}")"
-                fi
+                detail="$(combined_preflight_detail "${carry_status}" "${carry_log}" "${security_status}" "${security_log}")"
             fi
         fi
 
