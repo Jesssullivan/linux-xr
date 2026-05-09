@@ -19,13 +19,19 @@ This repo owns C0 supplier facts: the generic and RT kernel RPMs, install
 surface, carry patch set, and release cadence. It does not own SMI, NUMA,
 Chapel, C-state, reset, or workstation acceptance evidence.
 
-Historical rollout evidence from the 2026-04-12 validation:
-
 Current known supplier-side state:
 
-- running kernel: `6.19.5-7.xr.el10`
-- saved default boot kernel: `/boot/vmlinuz-6.19.5-7.xr.el10`
-- installed generic XR runtime RPM: `kernel-xr-6.19.5-7.xr.el10`
+- running kernel: `6.19.5-10.xr.el10`
+- installed generic XR runtime RPMs: `kernel-xr-6.19.5-7.xr.el10`,
+  `kernel-xr-6.19.5-9.xr.el10`, and `kernel-xr-6.19.5-10.xr.el10`
+- installed devel RPM: `kernel-xr-devel-6.19.5-10.xr.el10`
+- rollback generic kernels remain installed: `6.19.5-9.xr.el10` and
+  `6.19.5-7.xr.el10`
+- Secure Boot is disabled
+- sudo requires an interactive password on this host
+
+Historical rollout evidence from the 2026-04-12 validation:
+
 - installed RT XR runtime RPM: `kernel-xr-rt-6.19.5-8.xr.el10`
 - RT boot into `6.19.5-rt1-8.xr.el10` succeeded
 - live RT verification on `honey` confirmed `uname -v` contains `PREEMPT_RT` and `/sys/kernel/realtime` is `1`
@@ -33,7 +39,6 @@ Current known supplier-side state:
 - OpenXR userspace present
 - Monado unit files present but disabled
 - DRM nodes present on both the generic and RT validation boots
-- sudo requires an interactive password on this host
 
 Current live host posture is not owned by this page. Dell-7810 is the authority
 for `honey`'s current booted kernel, BIOS/SMI state, tuned profile, and reset
@@ -43,7 +48,8 @@ posture.
 
 Rollout stance:
 
-- generic XR kernel: active, documented, and the persistent default
+- generic XR kernel: active, documented, and boot-proven on the secured
+  `v6.19.5-xr10` line
 - RT XR kernel: reboot-valid and functionally verified, but still gated for regular use. Dell's repeated host packet is cautionary rather than improved, so regular RT use needs a downstream deadline packet, not only kernel boot proof.
 
 For live `honey` host state and current RT acceptance, see:

@@ -13,7 +13,7 @@ curl -fsSL https://tinyland-inc.github.io/linux-xr/install/rocky10-rt.sh | bash
 
 The scripts download the latest installable lab release assets, install the runtime kernel RPM by default, try to set the newest matching XR kernel as default, and print the expected post-reboot verification command.
 
-The public `latest.json` manifest is regenerated from the newest non-draft installable `vX.Y.Z-xrN` release with both generic and RT runtime RPMs. This intentionally includes secured lab prereleases such as `v6.19.5-xr9`, while excluding proof-only releases such as `proof-6.19.14-xr1-generic` and `proof-7.0.3-xr1-generic`.
+The public `latest.json` manifest is regenerated from the newest non-draft installable `vX.Y.Z-xrN` release with both generic and RT runtime RPMs. This intentionally includes secured lab prereleases such as `v6.19.5-xr10`, while excluding proof-only releases such as `proof-6.19.14-xr1-generic` and `proof-7.0.3-xr1-generic`.
 
 For non-root validation or staged rollout work, both scripts also support:
 
