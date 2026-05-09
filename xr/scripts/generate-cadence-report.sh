@@ -9,6 +9,7 @@ PATCH_DIR="${XR_DIR}/patches"
 SERIES_FILE="${PATCH_DIR}/series"
 BUILD_SCRIPT="${XR_DIR}/scripts/build-rpm.sh"
 SECURITY_DIR="${XR_DIR}/security"
+STABLE_URL="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
 
 CVE_2026_31431_MAINLINE_FIX="a664bf3d603dc3bdcf9ae47cc21e0daec706d7a5"
 CVE_2026_31431_6_19_FIX="ce42ee423e58dffa5ec03524054c9d8bfd4f6237"
@@ -63,6 +64,47 @@ short_ref() {
 
 describe_ref() {
     git describe --tags --abbrev=0 "$1" 2>/dev/null || echo "unavailable"
+}
+
+stable_family_from_ref() {
+    local ref="$1"
+
+    if [[ "${ref}" =~ linux-([0-9]+\.[0-9]+)\.y ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return
+    fi
+
+    if [[ "${ref}" =~ v([0-9]+\.[0-9]+)\. ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return
+    fi
+
+    return 1
+}
+
+latest_stable_tag_for_ref() {
+    local ref="$1"
+    local described
+    local family
+    local tag
+
+    if family="$(stable_family_from_ref "${ref}")"; then
+        tag="$(
+            { git ls-remote --tags "${STABLE_URL}" "refs/tags/v${family}.*" 2>/dev/null || true; } |
+                awk '{print $2}' |
+                sed 's#refs/tags/##; s/\^{}//' |
+                sort -Vu |
+                tail -n 1
+        )"
+
+        if [[ -n "${tag}" ]]; then
+            echo "${tag}"
+            return
+        fi
+    fi
+
+    described="$(describe_ref "${ref}")"
+    echo "${described}"
 }
 
 commit_list() {
@@ -673,7 +715,7 @@ trap 'rm -f "${tmp_report}"' EXIT
     if [[ "${#STABLE_REFS[@]}" -gt 0 ]]; then
         for stable_ref in "${STABLE_REFS[@]}"; do
             if has_ref "${stable_ref}"; then
-                echo "- Candidate ref: \`${stable_ref}\` (\`$(short_ref "${stable_ref}")\`), latest tag \`$(describe_ref "${stable_ref}")\`"
+                echo "- Candidate ref: \`${stable_ref}\` (\`$(short_ref "${stable_ref}")\`), latest tag \`$(latest_stable_tag_for_ref "${stable_ref}")\`"
             else
                 echo "- Candidate ref unavailable: \`${stable_ref}\`"
             fi
