@@ -21,7 +21,7 @@ jobs:
       - name: Fetch upstream refs
         run: |
           git fetch --no-tags --prune https://github.com/torvalds/linux.git master:refs/remotes/upstream/master
-          git fetch --tags --prune https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git \
+          git fetch --no-tags --prune https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git \
             linux-7.0.y:refs/remotes/stable/linux-7.0.y \
             linux-6.18.y:refs/remotes/longterm/linux-6.18.y
 
