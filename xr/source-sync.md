@@ -5,12 +5,15 @@ upstream stable target. It is separate from the RPM proof-build path.
 
 ## Current target
 
-As of 2026-05-08:
+As of 2026-05-09:
 
-- Current lab release line: `v6.19.5-xr10` is tagged and waiting on release artifacts
+- Current lab release line: `v6.19.5-xr10` is published and boot-proven on
+  `mbp-13` and `honey`
 - Bounded EOL compatibility proof target: `v6.19.14`
 - Maintained generic candidate targets: `v7.0.5` stable and `v6.18.28` longterm
-- Longterm fallback watch: `v6.12.87`
+- Longterm fallback watch: `v6.12.87`, currently blocked for linux-xr because
+  the DSC carry conflicts and Dirty Frag RxRPC has no repo-managed `6.12`
+  backport route
 - RT candidate floor: `v7.0.1` with `patch-7.0.1-rt2`
 - RT blockers: newest stable `v7.0.5` has no matching RT patch yet; `v6.18.13-rt4` fails the CVE-2026-31431 gate because the repo does not carry a 6.18.13 backport
 
@@ -53,6 +56,11 @@ Required checks before moving build defaults or release tags:
 ./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.5
 ./xr/scripts/build-rpm.sh --kernel-version 7.0.5 --xr-release 1 --security-preflight-only
 ```
+
+The `6.12.87` tarball contains the ESP shared-frag hardening, but the
+`rxkad.c` tree does not contain the Dirty Frag RxRPC linearize/COW hardening.
+Do not use `6.12.87` as a linux-xr fallback unless the DSC carry is refreshed
+and the RxRPC security route is resolved.
 
 RT remains separate until a compatible RT patch is proven:
 
