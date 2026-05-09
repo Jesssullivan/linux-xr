@@ -50,7 +50,7 @@ stable and `v6.18.28` longterm; the carry dry-run and security preflight passed
 for both. For RT, kernel.org currently exposes `patch-7.0.1-rt2` and
 `patch-6.18.13-rt4`; the `7.0.1-rt2` lane passed carry and security preflights,
 while `6.18.13-rt4` fails the CVE-2026-31431 gate. Keep RT pinned to the
-current `v6.19.5-xr9` line until a compatible RT patchset or local RT refresh
+current `v6.19.5-xr10` line until a compatible RT patchset or local RT refresh
 is proven and promoted deliberately.
 
 On the Dirty Frag front, Linus `master` now contains the ESP shared-frag fix as
