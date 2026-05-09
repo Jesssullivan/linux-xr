@@ -27,6 +27,22 @@ until measured evidence justifies submitting or retaining them.
 | QP table correction | `drivers/gpu/drm/amd/display/dc/dml/dsc/qp_tables.h` | local-risk carry | Changes min/max QP table entries for 8bpc 4:4:4. This is not part of the v7 upstream DSC-BPP series. |
 | RC offset correction | `drivers/gpu/drm/amd/display/dc/dml/dsc/rc_calc_fpu.c` | local-risk carry | Changes the 8 BPP 4:4:4 RC offset path. This needs headset/display-link evidence before upstream treatment. |
 
+## Compatibility Notes
+
+Observed on 2026-05-09:
+
+- `6.12.y` does not carry the DisplayID formula timing parser blocks that newer
+  stable branches carry, so this patch intentionally does not include the
+  formula-timing `DISPLAYID_BLOCK_DESCRIPTOR_PAYLOAD_BYTES` cleanup from the
+  upstream-overlap series.
+- The Type VII `dsc_passthrough_timings_support` flag is set in
+  `add_displayid_detailed_1_modes()` instead of changing
+  `drm_mode_displayid_detailed()`'s signature. That keeps the carry compatible
+  with `6.12.y`, where the helper still takes non-const timing descriptors,
+  while preserving the same behavior on newer stable branches.
+- The bounded carry dry-run passed for `6.12.87`, `6.18.28`, `6.19.14`, and
+  `7.0.5` after this compatibility adjustment.
+
 ## Split Plan
 
 1. Split parser and DRM propagation into `0007a-vesa-displayid-dsc-bpp-parser.patch`.

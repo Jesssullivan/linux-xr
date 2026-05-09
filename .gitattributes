@@ -2,4 +2,5 @@
 *.[ch] diff=cpp
 *.dts diff=dts
 *.dts[io] diff=dts
+*.patch whitespace=-space-before-tab,-blank-at-eol
 *.rs diff=rust
