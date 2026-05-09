@@ -109,7 +109,7 @@ jobs:
 
       - name: Checkout
         if: steps.filter.outputs.skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           filter: blob:none
           sparse-checkout: |
