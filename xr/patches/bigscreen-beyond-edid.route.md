@@ -33,6 +33,9 @@ As of 2026-04-25:
   this manufacturer/product ID is not marked with `EDID_QUIRK_NON_DESKTOP`.
 - The carry patch has been cleaned so `git apply --check` succeeds against
   current `xr/main`.
+- The release carry uses `EDID_QUIRK_NON_DESKTOP_MASK` so the same patch works
+  across the older `6.12.y` bitmask-style EDID quirk definitions and newer
+  enum-plus-`BIT()` sources.
 - The stale `mail-archive.com` reference has been replaced with a
   `lore.kernel.org` link to the prior public posting.
 
