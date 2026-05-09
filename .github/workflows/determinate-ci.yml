@@ -8,12 +8,82 @@ on:
       - xr/main
 
 jobs:
-  determinate-ci:
+  inventory:
+    name: determinate-ci / inventory
     # This caches and validates the thin Nix surface for linux-xr. It is not
     # the canonical kernel RPM release lane, which remains the Rocky/Linux
     # workflow in build-kernel.yml. Do not opt into FlakeHub publishing here:
     # this repository is a kernel tree and exceeds FlakeHub's archive limit.
-    uses: DeterminateSystems/ci/.github/workflows/workflow.yml@main
+    runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    outputs:
+      systems: ${{ steps.inventory.outputs.systems }}
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: DeterminateSystems/determinate-nix-action@v3
+
+      - uses: DeterminateSystems/flakehub-cache-action@main
+
+      - name: Inventory the flake for targeted systems
+        id: inventory
+        env:
+          FLAKE_ITER_FLAKEREF: https://flakehub.com/f/DeterminateSystems/flake-iter/*
+          FLAKE_ITER_RUNNER_MAP: |
+            {
+              "aarch64-darwin": "macos-latest",
+              "x86_64-linux": "ubuntu-latest",
+              "aarch64-linux": "ubuntu-24.04-arm"
+            }
+        run: nix run "$FLAKE_ITER_FLAKEREF" -- systems
+
+  build:
+    name: determinate-ci / build (${{ matrix.systems.nix-system }}, ${{ matrix.systems.runner }})
+    needs: inventory
+    runs-on: ${{ matrix.systems.runner }}
+    strategy:
+      fail-fast: true
+      matrix:
+        systems: ${{ fromJSON(needs.inventory.outputs.systems) }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            extra-experimental-features = provenance
+
+      - uses: DeterminateSystems/flakehub-cache-action@main
+
+      - name: Build for ${{ matrix.systems.nix-system }}
+        env:
+          FLAKE_ITER_FLAKEREF: https://flakehub.com/f/DeterminateSystems/flake-iter/*
+          FLAKE_ITER_NIX_SYSTEM: ${{ matrix.systems.nix-system }}
+        run: nix run "$FLAKE_ITER_FLAKEREF" -- --verbose build
+
+  success:
+    name: determinate-ci / success
+    needs: build
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - run: "true"
+
+      - name: Fail if any build job failed
+        if: |
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled')
+        run: |
+          echo "A dependent in the build matrix failed."
+          exit 1
