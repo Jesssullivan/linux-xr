@@ -155,9 +155,16 @@ scripts/config --enable CONFIG_OSNOISE_TRACER
 scripts/config --enable CONFIG_TIMERLAT_TRACER
 scripts/config --enable CONFIG_TRACER_SNAPSHOT
 scripts/config --enable CONFIG_X86_MSR
-# DELL_RBU disabled: its Kconfig has `select FW_LOADER_USER_HELPER` which
-# breaks systemd 257 boot. Use F12 BIOS flash menu instead (just bios-prepare-usb).
+# DELL_RBU and 6.12-era LP55XX LED support select FW_LOADER_USER_HELPER,
+# which breaks the systemd 257 boot contract. Use F12 BIOS flash menu instead
+# of DELL_RBU; keep LP55XX out unless a lab host proves it is needed.
 scripts/config --disable CONFIG_DELL_RBU
+scripts/config --disable CONFIG_LEDS_LP55XX_COMMON
+scripts/config --disable CONFIG_LEDS_LP5521
+scripts/config --disable CONFIG_LEDS_LP5523
+scripts/config --disable CONFIG_LEDS_LP5562
+scripts/config --disable CONFIG_LEDS_LP5569
+scripts/config --disable CONFIG_LEDS_LP8501
 scripts/config --disable CONFIG_ITCO_WDT
 
 # BCI workload support (CPU isolation, high-res timers)
@@ -213,6 +220,13 @@ make olddefconfig
 # make olddefconfig can re-enable options via Kconfig dependencies.
 # Re-apply critical overrides and abort if they don't stick.
 echo "=== Post-olddefconfig: re-applying critical systemd 257 overrides ==="
+scripts/config --disable CONFIG_DELL_RBU
+scripts/config --disable CONFIG_LEDS_LP55XX_COMMON
+scripts/config --disable CONFIG_LEDS_LP5521
+scripts/config --disable CONFIG_LEDS_LP5523
+scripts/config --disable CONFIG_LEDS_LP5562
+scripts/config --disable CONFIG_LEDS_LP5569
+scripts/config --disable CONFIG_LEDS_LP8501
 scripts/config --disable CONFIG_FW_LOADER_USER_HELPER
 scripts/config --disable CONFIG_DEBUG_INFO_NONE
 scripts/config --disable CONFIG_DEBUG_INFO_REDUCED
@@ -248,6 +262,8 @@ check_config() {
     fi
 }
 check_config CONFIG_FW_LOADER_USER_HELPER n
+check_config CONFIG_DELL_RBU n
+check_config CONFIG_LEDS_LP55XX_COMMON n
 check_config CONFIG_DEBUG_INFO_BTF y
 check_config CONFIG_DEBUG_INFO_NONE n
 check_config CONFIG_DEBUG_INFO_REDUCED n
