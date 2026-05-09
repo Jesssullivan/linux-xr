@@ -40,8 +40,9 @@ Observed on 2026-05-09:
   `drm_mode_displayid_detailed()`'s signature. That keeps the carry compatible
   with `6.12.y`, where the helper still takes non-const timing descriptors,
   while preserving the same behavior on newer stable branches.
-- The bounded carry dry-run passed for `6.12.87`, `6.18.28`, `6.19.14`, and
-  `7.0.5` after this compatibility adjustment.
+- The bounded carry dry-run must pass with RPM-compatible zero-fuzz matching
+  for `6.12.87`, `6.18.28`, `6.19.14`, and `7.0.5` before this carry can gate
+  a source-sync or fallback release.
 
 ## Split Plan
 

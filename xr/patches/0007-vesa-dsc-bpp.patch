@@ -102,14 +102,10 @@ index 5b1b32f73516..8f1a2f33ca1a 100644
  struct displayid_block {
  	u8 tag;
  	u8 rev;
-@@ -125,6 +126,7 @@ struct displayid_detailed_timings_1 {
- 	__le16 vsw;
- } __packed;
+@@ -127,2 +128,3 @@
  
 +#define DISPLAYID_BLOCK_PASSTHROUGH_TIMINGS_SUPPORT	BIT(3)
  struct displayid_detailed_timing_block {
- 	struct displayid_block base;
- 	struct displayid_detailed_timings_1 timings[];
 @@ -145,9 +147,17 @@
 +#define DISPLAYID_VESA_DP_TYPE		GENMASK(2, 0)
  #define DISPLAYID_VESA_MSO_OVERLAP	GENMASK(3, 0)
@@ -276,15 +272,11 @@ index 056eff8cbd1a..26d53a548a27 100644
  
  	kfree(info->vics);
  	info->vics = NULL;
-@@ -6795,7 +6820,7 @@ static void update_display_info(struct drm_connector *connector,
- 	if (edid->features & DRM_EDID_FEATURE_RGB_YCRCB422)
- 		info->color_formats |= DRM_COLOR_FORMAT_YCBCR422;
+@@ -6798,3 +6823,3 @@ static void update_display_info(struct drm_connector *connector,
  
 -	drm_update_mso(connector, drm_edid);
 +	drm_update_vesa_specific_block(connector, drm_edid);
  
- out:
- 	if (drm_edid_has_internal_quirk(connector, EDID_QUIRK_NON_DESKTOP)) {
 @@ -6848,10 +6872,14 @@ static int add_displayid_detailed_1_modes(struct drm_connector *connector,
  	for (i = 0; i < num_timings; i++) {
  		struct displayid_detailed_timings_1 *timings = &det->timings[i];

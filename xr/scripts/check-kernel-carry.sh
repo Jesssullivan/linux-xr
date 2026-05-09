@@ -18,7 +18,8 @@ usage() {
 Usage: check-kernel-carry.sh --kernel-version VER [--rt-version RT_VER] [--work-dir DIR] [--keep-work]
 
 Downloads a kernel.org tarball, optionally dry-runs the matching PREEMPT_RT
-patch first, then dry-runs every patch listed in xr/patches/series.
+patch first, then dry-runs every patch listed in xr/patches/series with
+RPM-compatible zero-fuzz matching.
 
 Examples:
   ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14
@@ -136,7 +137,7 @@ while IFS= read -r patch_file; do
     fi
 
     echo "    ${patch_file}"
-    patch --batch -d "${SOURCE_DIR}" -p1 --dry-run < "${PATCH_DIR}/${patch_file}"
+    patch --batch -d "${SOURCE_DIR}" -p1 --fuzz=0 --dry-run < "${PATCH_DIR}/${patch_file}"
 done < "${SERIES_FILE}"
 
 echo "=== linux-xr carry dry-run passed for ${KERNEL_VERSION}${RT_VERSION:+ with ${RT_VERSION}} ==="
