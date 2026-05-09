@@ -14,6 +14,7 @@ STABLE_URL="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
 CVE_2026_31431_MAINLINE_FIX="a664bf3d603dc3bdcf9ae47cc21e0daec706d7a5"
 CVE_2026_31431_6_19_FIX="ce42ee423e58dffa5ec03524054c9d8bfd4f6237"
 CVE_2026_31431_6_18_FIX="fafe0fa2995a0f7073c1c358d7d3145bcc9aedd8"
+CVE_2026_31431_6_12_FIX="8b88d99341f139e23bdeb1027a2a3ae10d341d82"
 CVE_2026_31431_PATCH="cve-2026-31431-algif-aead.patch"
 DIRTYFRAG_ESP_FIX="f4c50a4034e62ab75f1d5cdd191dd5f9c77fdff4"
 DIRTYFRAG_ESP_PATCH="dirtyfrag-esp-shared-frag.patch"
@@ -532,7 +533,7 @@ dirtyfrag_rxrpc_repo_backport_applies() {
         return 1
     fi
 
-    (( major == 6 && (minor == 18 || minor == 19) )) ||
+    (( major == 6 && (minor == 12 || minor == 18 || minor == 19) )) ||
         (( major == 7 && minor == 0 ))
 }
 
@@ -593,6 +594,9 @@ cve_2026_31431_ref_fix_status() {
             ;;
         *linux-6.18.y*|*v6.18*)
             commit="${CVE_2026_31431_6_18_FIX}"
+            ;;
+        *linux-6.12.y*|*v6.12*)
+            commit="${CVE_2026_31431_6_12_FIX}"
             ;;
         *)
             echo "unknown-ref-family"
