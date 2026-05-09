@@ -85,10 +85,10 @@ on AMD GPUs (RDNA2+). Includes:
 - CVE-2026-31431 algif_aead backport
 %endif
 %if 0%{?apply_dirtyfrag_esp_patch}
-- Dirty Frag ESP shared-frag hardening
+- CVE-2026-43284 Dirty Frag ESP shared-frag hardening
 %endif
 %if 0%{?apply_dirtyfrag_rxrpc_patch}
-- Dirty Frag RxRPC RXKAD in-place decrypt hardening
+- CVE-2026-43500 Dirty Frag RxRPC RXKAD in-place decrypt hardening
 %endif
 %if "%{rt_version}" != ""
 - PREEMPT_RT real-time scheduling (%{rt_version})

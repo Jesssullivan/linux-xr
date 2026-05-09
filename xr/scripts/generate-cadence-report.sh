@@ -16,7 +16,9 @@ CVE_2026_31431_6_19_FIX="ce42ee423e58dffa5ec03524054c9d8bfd4f6237"
 CVE_2026_31431_6_18_FIX="fafe0fa2995a0f7073c1c358d7d3145bcc9aedd8"
 CVE_2026_31431_6_12_FIX="8b88d99341f139e23bdeb1027a2a3ae10d341d82"
 CVE_2026_31431_PATCH="cve-2026-31431-algif-aead.patch"
+DIRTYFRAG_ESP_CVE="CVE-2026-43284"
 DIRTYFRAG_ESP_FIX="f4c50a4034e62ab75f1d5cdd191dd5f9c77fdff4"
+DIRTYFRAG_RXRPC_CVE="CVE-2026-43500"
 DIRTYFRAG_ESP_PATCH="dirtyfrag-esp-shared-frag.patch"
 DIRTYFRAG_RXRPC_PATCH="dirtyfrag-rxrpc-linearize.patch"
 
@@ -434,16 +436,90 @@ dirtyfrag_esp_version_status() {
         return
     fi
 
-    if (( major == 6 && minor == 12 )); then
-        if (( patch >= 87 )); then
-            echo "fixed"
-        else
-            echo "vulnerable"
-        fi
+    if (( major == 6 && minor == 19 )); then
+        echo "vulnerable"
         return
     fi
 
-    if (( major == 6 && (minor == 18 || minor == 19) )); then
+    if (( major == 6 )); then
+        case "${minor}" in
+            18)
+                if (( patch >= 28 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            13|14|15|16|17)
+                echo "vulnerable"
+                ;;
+            12)
+                if (( patch >= 87 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            7|8|9|10|11)
+                echo "vulnerable"
+                ;;
+            6)
+                if (( patch >= 138 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            2|3|4|5)
+                echo "vulnerable"
+                ;;
+            1)
+                if (( patch >= 171 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            0)
+                echo "vulnerable"
+                ;;
+            *)
+                echo "unknown"
+                ;;
+        esac
+        return
+    fi
+
+    if (( major == 5 )); then
+        case "${minor}" in
+            16|17|18|19)
+                echo "vulnerable"
+                ;;
+            15)
+                if (( patch >= 205 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            12|13|14)
+                echo "vulnerable"
+                ;;
+            10)
+                if (( patch >= 255 )); then
+                    echo "fixed"
+                else
+                    echo "vulnerable"
+                fi
+                ;;
+            *)
+                echo "unknown"
+                ;;
+        esac
+        return
+    fi
+
+    if (( major == 4 && minor >= 11 )); then
         echo "vulnerable"
         return
     fi
@@ -461,7 +537,8 @@ dirtyfrag_esp_repo_backport_applies() {
         return 1
     fi
 
-    (( major == 6 && (minor == 18 || minor == 19) )) ||
+    (( major == 6 && minor == 18 && patch < 28 )) ||
+        (( major == 6 && minor == 19 )) ||
         (( major == 7 && minor == 0 && patch < 5 ))
 }
 
@@ -676,13 +753,13 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo "| CVE-2026-31431 repo backport \`${CVE_2026_31431_PATCH}\` | \`$(cve_2026_31431_repo_backport_status)\` |"
     echo "| CVE-2026-31431 default build route | \`$(cve_2026_31431_build_route_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
     echo "| CVE-2026-31431 upstream/mainline fix \`${CVE_2026_31431_MAINLINE_FIX:0:12}\` in upstream ref | \`$(ref_contains_commit "${UPSTREAM_REF}" "${CVE_2026_31431_MAINLINE_FIX}")\` |"
-    echo "| Dirty Frag ESP default base kernel \`${DEFAULT_KERNEL_VERSION:-unavailable}\` | \`$(dirtyfrag_esp_version_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
-    echo "| Dirty Frag ESP repo backport \`${DIRTYFRAG_ESP_PATCH}\` | \`$(security_patch_status "${DIRTYFRAG_ESP_PATCH}")\` |"
-    echo "| Dirty Frag ESP default build route | \`$(dirtyfrag_esp_build_route_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
-    echo "| Dirty Frag ESP upstream fix \`${DIRTYFRAG_ESP_FIX:0:12}\` in upstream ref | \`$(ref_contains_commit "${UPSTREAM_REF}" "${DIRTYFRAG_ESP_FIX}")\` |"
-    echo "| Dirty Frag RxRPC default base kernel \`${DEFAULT_KERNEL_VERSION:-unavailable}\` | \`$(dirtyfrag_rxrpc_version_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
-    echo "| Dirty Frag RxRPC repo backport \`${DIRTYFRAG_RXRPC_PATCH}\` | \`$(security_patch_status "${DIRTYFRAG_RXRPC_PATCH}")\` |"
-    echo "| Dirty Frag RxRPC default build route | \`$(dirtyfrag_rxrpc_build_route_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
+    echo "| ${DIRTYFRAG_ESP_CVE} Dirty Frag ESP default base kernel \`${DEFAULT_KERNEL_VERSION:-unavailable}\` | \`$(dirtyfrag_esp_version_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
+    echo "| ${DIRTYFRAG_ESP_CVE} Dirty Frag ESP repo backport \`${DIRTYFRAG_ESP_PATCH}\` | \`$(security_patch_status "${DIRTYFRAG_ESP_PATCH}")\` |"
+    echo "| ${DIRTYFRAG_ESP_CVE} Dirty Frag ESP default build route | \`$(dirtyfrag_esp_build_route_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
+    echo "| ${DIRTYFRAG_ESP_CVE} Dirty Frag ESP upstream fix \`${DIRTYFRAG_ESP_FIX:0:12}\` in upstream ref | \`$(ref_contains_commit "${UPSTREAM_REF}" "${DIRTYFRAG_ESP_FIX}")\` |"
+    echo "| ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC default base kernel \`${DEFAULT_KERNEL_VERSION:-unavailable}\` | \`$(dirtyfrag_rxrpc_version_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
+    echo "| ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC repo backport \`${DIRTYFRAG_RXRPC_PATCH}\` | \`$(security_patch_status "${DIRTYFRAG_RXRPC_PATCH}")\` |"
+    echo "| ${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC default build route | \`$(dirtyfrag_rxrpc_build_route_status "${DEFAULT_KERNEL_VERSION:-unknown}")\` |"
     if [[ "${#STABLE_REFS[@]}" -gt 0 ]]; then
         for stable_ref in "${STABLE_REFS[@]}"; do
             echo "| CVE-2026-31431 fix in candidate ref \`${stable_ref}\` | \`$(cve_2026_31431_ref_fix_status "${stable_ref}")\` |"
@@ -693,7 +770,8 @@ trap 'rm -f "${tmp_report}"' EXIT
     echo
     echo "Known fixed floors for this gate include: \`5.10.254+\`, \`5.15.204+\`, \`6.1.170+\`, \`6.6.137+\`, \`6.12.85+\`, \`6.18.22+\`, \`6.19.12+\`, and \`7.0+\`."
     echo "For vulnerable \`6.19.x\` bases, \`build-rpm.sh\` applies the repo backport when present."
-    echo "Dirty Frag ESP is tracked as fixed in \`7.0.5+\` for the \`7.0.x\` lane; Dirty Frag RxRPC has no upstream fixed floor recorded here yet, so supported bases rely on the repo backport."
+    echo "${DIRTYFRAG_ESP_CVE} Dirty Frag ESP fixed floors include \`5.10.255+\`, \`5.15.205+\`, \`6.1.171+\`, \`6.6.138+\`, \`6.12.87+\`, \`6.18.28+\`, and \`7.0.5+\`; the EOL \`6.19.x\` lab line stays conservative and uses the repo backport."
+    echo "${DIRTYFRAG_RXRPC_CVE} Dirty Frag RxRPC is reserved but not public in NVD/CVE.org in the last linux-xr check; no upstream fixed floor is recorded here yet, so supported bases rely on the repo backport."
     echo
     echo "## Carry Apply Triage"
     echo
