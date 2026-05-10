@@ -51,6 +51,9 @@ macOS case-insensitive checkouts for Linux source truth.
 Required checks before moving build defaults or release tags:
 
 ```bash
+# Fast static guard after changing xr/patches/series or kernel-xr.spec:
+./xr/scripts/check-rpm-patch-wiring.sh
+
 # Discover current maintained candidates and optionally run bounded preflights:
 ./xr/scripts/triage-upstream-targets.sh
 ./xr/scripts/triage-upstream-targets.sh --run-preflight

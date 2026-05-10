@@ -12,6 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 XR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PATCH_DIR="${XR_DIR}/patches"
 SERIES_FILE="${PATCH_DIR}/series"
+PATCH_WIRING_CHECK="${XR_DIR}/scripts/check-rpm-patch-wiring.sh"
 
 usage() {
     cat <<'EOF'
@@ -80,6 +81,12 @@ fi
 require_command curl
 require_command patch
 require_command tar
+
+if [[ ! -x "${PATCH_WIRING_CHECK}" ]]; then
+    echo "ERROR: ${PATCH_WIRING_CHECK} not found or not executable." >&2
+    exit 1
+fi
+"${PATCH_WIRING_CHECK}"
 
 if [[ -z "${WORK_DIR}" ]]; then
     WORK_DIR="${TMPDIR:-/tmp}/linux-xr-carry-${KERNEL_VERSION}${RT_VERSION:+-${RT_VERSION}}"
