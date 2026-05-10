@@ -5,15 +5,16 @@ upstream stable target. It is separate from the RPM proof-build path.
 
 ## Current target
 
-As of 2026-05-09:
+As of 2026-05-10:
 
-- Current lab release line: `v6.19.5-xr10` is published and boot-proven on
-  `mbp-13` and `honey`
-- Current merged build candidate: `v6.19.5-xr11` from `xr/main` commit
-  `3b55106d`, carrying `CVE-2026-31431`, `CVE-2026-43284`, and both
-  `CVE-2026-43500` RxRPC RXKAD/RXGK backports. It should not replace `xr10`
-  in rollout docs until generic and RT artifacts are uploaded and target hosts
-  boot the exact `6.19.5-11.xr.el10` kernel.
+- Current published/downloadable lab release line: `v6.19.5-xr11` from
+  `xr/main` commit `e25a1a77`, with generic RPMs, RT RPMs, and `SHA256SUMS`
+  published on GitHub. It carries `CVE-2026-31431`, `CVE-2026-43284`, and both
+  `CVE-2026-43500` RxRPC RXKAD/RXGK backports.
+- Current host boot-proven line: `v6.19.5-xr10` is boot-proven on `mbp-13` and
+  `honey`. xr11 should not replace `xr10` in host-proven rollout docs until
+  target hosts boot the exact `6.19.5-11.xr.el10` kernel and record SELinux,
+  RPM, rollback, and default-boot evidence.
 - Bounded EOL compatibility proof target: `v6.19.14`
 - Maintained generic candidate targets: `v7.0.5` stable and `v6.18.28` longterm
 - Longterm fallback watch: `v6.12.87`, still pending a successful RPM proof.
