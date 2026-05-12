@@ -17,6 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 XR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PATCH_DIR="${XR_DIR}/patches"
 SERIES_FILE="${PATCH_DIR}/series"
+PATCH_WIRING_CHECK="${XR_DIR}/scripts/check-rpm-patch-wiring.sh"
 SECURITY_DIR="${XR_DIR}/security"
 SECURITY_CONFIG_CHECK="${XR_DIR}/scripts/check-security-config.sh"
 CVE_2026_31431_PATCH="cve-2026-31431-algif-aead.patch"
@@ -589,6 +590,12 @@ if [[ ! -f "${SERIES_FILE}" ]]; then
     echo "ERROR: ${SERIES_FILE} not found."
     exit 1
 fi
+
+if [[ ! -x "${PATCH_WIRING_CHECK}" ]]; then
+    echo "ERROR: ${PATCH_WIRING_CHECK} not found or not executable."
+    exit 1
+fi
+"${PATCH_WIRING_CHECK}"
 
 mapfile -t PATCHES < <(grep -vE '^[[:space:]]*(#|$)' "${SERIES_FILE}")
 

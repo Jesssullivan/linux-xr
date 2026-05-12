@@ -42,6 +42,7 @@ Source2:        check-security-config.sh
 # XR patches (fetched by build-rpm.sh into SOURCES/)
 Patch0:         0007-vesa-dsc-bpp.patch
 Patch1:         bigscreen-beyond-edid.patch
+Patch20:        amdgpu-dsc-pps-debugfs.patch
 %if 0%{?apply_cve_2026_31431_patch}
 Patch2:         cve-2026-31431-algif-aead.patch
 %endif
@@ -85,6 +86,7 @@ on AMD GPUs (RDNA2+). Includes:
 - EDID non-desktop quirk for Beyond (BIG/0x1234)
 - DSC QP table corrections for 8bpc 4:4:4 at 8 BPP
 - RC offset fix for ofs[11] in get_ofs_set() CM_444/CM_RGB
+- Read-only DSC PPS debugfs observability for Honey lab proof work
 %if 0%{?apply_cve_2026_31431_patch}
 - CVE-2026-31431 algif_aead backport
 %endif
@@ -143,6 +145,9 @@ patch -p1 < %{_sourcedir}/patch-%{rt_version}.patch
 
 # EDID non-desktop quirk for Beyond (fuzz needed: context shifted by DSC patch)
 patch -p1 --fuzz=3 < %{_sourcedir}/bigscreen-beyond-edid.patch
+
+# Honey lab diagnostic: expose packed DSC PPS through connector debugfs.
+%patch -P20 -p1
 
 # Apply base config from honey server
 cp %{SOURCE1} .config
