@@ -375,7 +375,11 @@ dirtyfrag_rxrpc_status() {
     fi
 
     if (( major == 7 && minor == 0 )); then
-        echo "vulnerable"
+        if (( patch >= 6 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
         return
     fi
 
@@ -384,7 +388,16 @@ dirtyfrag_rxrpc_status() {
         return
     fi
 
-    if (( major == 6 && (minor == 18 || minor == 19) )); then
+    if (( major == 6 && minor == 18 )); then
+        if (( patch >= 29 )); then
+            echo "fixed"
+        else
+            echo "vulnerable"
+        fi
+        return
+    fi
+
+    if (( major == 6 && minor == 19 )); then
         echo "vulnerable"
         return
     fi
