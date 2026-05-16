@@ -315,7 +315,7 @@ adding, dropping, or upstreaming a repo-managed CVE or public security backport.
 | --- | --- | --- | --- | --- |
 | CVE-2026-31431 | Copy Fail / `algif_aead` AF_ALG local privilege escalation | Patched in `v6.19.5-xr9` and carried forward in `v6.19.5-xr10` and published `v6.19.5-xr11`; xr11 keeps the same stable `6.19.y` backport on top of the vulnerable `6.19.5` base. Fixed natively by upstream affected-range floors such as `6.19.12+`, `6.18.22+`, `6.12.85+`, `6.6.137+`, `6.1.170+`, `5.15.204+`, `5.10.254+`, and `7.0+` bases. | [`xr/security/cve-2026-31431-algif-aead.patch`](xr/security/cve-2026-31431-algif-aead.patch), [`xr/scripts/build-rpm.sh`](xr/scripts/build-rpm.sh), [`xr/scripts/check-cve-2026-31431-live.sh`](xr/scripts/check-cve-2026-31431-live.sh), [`v6.19.5-xr10`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr10), [`v6.19.5-xr11`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr11), [`xr11` release run](https://github.com/tinyland-inc/linux-xr/actions/runs/25615643270) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-31431), [Red Hat RHSB-2026-02](https://access.redhat.com/security/vulnerabilities/RHSB-2026-02), [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog?field_cve=CVE-2026-31431), [Copy Fail](https://copy.fail/) |
 | CVE-2026-43284 | Dirty Frag / ESP page-cache write | `v6.19.5-xr10` carries the repo-managed ESP backport on the vulnerable `6.19.5` base, and published `v6.19.5-xr11` carries it forward with generic and RT RPMs plus `SHA256SUMS`. Published fixed floors include `5.10.255+`, `5.15.205+`, `6.1.171+`, `6.6.138+`, `6.12.87+`, `6.18.28+`, and `7.0.5+`; EOL `6.19.x` stays conservative and uses the repo backport. | [`xr/security/dirtyfrag-esp-shared-frag.patch`](xr/security/dirtyfrag-esp-shared-frag.patch), [`xr/scripts/build-rpm.sh`](xr/scripts/build-rpm.sh), [`v6.19.5-xr10`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr10), [`v6.19.5-xr11`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr11), [`xr11` release run](https://github.com/tinyland-inc/linux-xr/actions/runs/25615643270) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-43284), [CVE record](https://www.cve.org/CVERecord?id=CVE-2026-43284), [Dirty Frag](https://github.com/Jesssullivan/dirtyfrag), [ESP netdev fix f4c50a4034e6](https://git.kernel.org/pub/scm/linux/kernel/git/netdev/net.git/commit/?id=f4c50a4034e6) |
-| CVE-2026-43500 | Dirty Frag / RxRPC page-cache write | `v6.19.5-xr10` carried the first repo-managed RxRPC RXKAD linearize/COW hardening on the vulnerable `6.19.5` base. Published `v6.19.5-xr11` is the first release with RXKAD plus RXGK coverage on the lab base. As of the 2026-05-09 linux-xr check, Debian tracks fixed package builds but NVD/CVE.org are not public here and no kernel.org upstream fixed floor is recorded in the gate, so supported `6.12.x`, `6.18.x`, `6.19.x`, and `7.0.x` bases rely on the linux-xr backport route until proven otherwise. | [`xr/security/dirtyfrag-rxrpc-linearize.patch`](xr/security/dirtyfrag-rxrpc-linearize.patch), [`xr/security/dirtyfrag-rxrpc-rxgk-linearize.patch`](xr/security/dirtyfrag-rxrpc-rxgk-linearize.patch), [`xr/scripts/build-rpm.sh`](xr/scripts/build-rpm.sh), [`v6.19.5-xr10`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr10), [`v6.19.5-xr11`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr11), [`xr11` release run](https://github.com/tinyland-inc/linux-xr/actions/runs/25615643270) | [Dirty Frag](https://github.com/Jesssullivan/dirtyfrag), [Debian CVE tracker](https://security-tracker.debian.org/tracker/CVE-2026-43500), [RxRPC patch route](https://lore.kernel.org/all/afKV2zGR6rrelPC7@v4bel/) |
+| CVE-2026-43500 | Dirty Frag / RxRPC page-cache write | `v6.19.5-xr10` carried the first repo-managed RxRPC RXKAD linearize/COW hardening on the vulnerable `6.19.5` base. Published `v6.19.5-xr11` is the first release with RXKAD plus RXGK coverage on the lab base. NVD now records affected ranges ending before `6.18.29` and before `7.0.6`; `7.0.8` and `6.18.31` are fixed natively, while `6.19.x` and `6.12.x` linux-xr proof/fallback builds continue to rely on the repo backport route unless a vendor or upstream fixed floor is proven. | [`xr/security/dirtyfrag-rxrpc-linearize.patch`](xr/security/dirtyfrag-rxrpc-linearize.patch), [`xr/security/dirtyfrag-rxrpc-rxgk-linearize.patch`](xr/security/dirtyfrag-rxrpc-rxgk-linearize.patch), [`xr/scripts/build-rpm.sh`](xr/scripts/build-rpm.sh), [`v6.19.5-xr10`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr10), [`v6.19.5-xr11`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr11), [`xr11` release run](https://github.com/tinyland-inc/linux-xr/actions/runs/25615643270) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-43500), [CVE record](https://www.cve.org/CVERecord?id=CVE-2026-43500), [Dirty Frag](https://github.com/Jesssullivan/dirtyfrag), [Debian CVE tracker](https://security-tracker.debian.org/tracker/CVE-2026-43500), [RxRPC stable fix](https://git.kernel.org/stable/c/3eae0f4f9f7206a4801efa5e0235c25bbd5a412c) |
 
 ## SELinux and Security Config
 
@@ -343,7 +343,7 @@ drift fails before an RPM can be accepted.
 
 ## Upstream status
 
-As of 2026-05-10, the latest published/downloadable secured linux-xr lab release
+As of 2026-05-16, the latest published/downloadable secured linux-xr lab release
 is [`v6.19.5-xr11`](https://github.com/tinyland-inc/linux-xr/releases/tag/v6.19.5-xr11).
 It keeps the `6.19.5` lab base but carries repo-managed
 [`CVE-2026-31431`](#known-patched-cves-and-security-backports),
@@ -371,35 +371,37 @@ Current ingestion checkpoint:
   patches in [`xr/patches/series`](xr/patches/series) dry-run cleanly against
   the `linux-6.19.14` tarball, and the security preflight passes by applying
   the repo-managed Dirty Frag backports.
-- Generic `6.18.28` longterm and `7.0.5` stable are maintained-base candidates:
-  the XR carry patches dry-run cleanly against both tarballs. Both have
-  `CVE-2026-43284` ESP fixed natively and still use the repo-managed
-  `CVE-2026-43500` RxRPC route until an upstream fixed floor is proven.
-- Generic `6.12.87` has `CVE-2026-43284` ESP fixed natively and now has a
-  repo-managed `CVE-2026-43500` RxRPC route. It remains a fallback candidate,
-  but its next real RPM proof must preserve the Rocky/systemd
+- Generic `7.0.8` stable is the newest maintained-base candidate with passing
+  carry and security preflights.
+- Generic `6.18.31` and `6.12.89` longterm are clean fallback candidates with
+  passing carry and security preflights. `6.12.89` still needs a real RPM proof
+  before promotion; that proof must preserve the Rocky/systemd
   `CONFIG_FW_LOADER_USER_HELPER=n` boot contract while allowing newer hardening
   symbols that do not exist in `6.12.y` to be absent rather than disabled.
+- Fixed `7.0.8` and `6.18.31` bases have `CVE-2026-31431`,
+  `CVE-2026-43284`, and `CVE-2026-43500` coverage natively at their fixed
+  floors. `6.12.89` still needs the repo-managed `CVE-2026-43500` RxRPC route
+  until a 6.12 fixed floor is proven.
 - RT `7.0.1-rt2` and `6.19.3-rt1` pass the bounded carry/security preflights;
-  RT `6.18.13-rt4` still fails the CVE-2026-31431 gate. Keep RT promotion
-  separate from the generic SOTA target until a same-base RT patchset or local
-  RT refresh is proven.
+  RT `6.18.13-rt4` applies the carry but still fails the CVE-2026-31431 gate.
+  Keep RT promotion separate from the generic SOTA target until a same-base RT
+  patchset or local RT refresh is proven.
 - Use [`xr/scripts/check-kernel-carry.sh`](xr/scripts/check-kernel-carry.sh) to
   repeat this check before bumping build defaults or tagging a release.
 
 ```bash
 ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14
-./xr/scripts/check-kernel-carry.sh --kernel-version 6.18.28
-./xr/scripts/check-kernel-carry.sh --kernel-version 6.12.87
-./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.5
+./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.8
+./xr/scripts/check-kernel-carry.sh --kernel-version 6.18.31
+./xr/scripts/check-kernel-carry.sh --kernel-version 6.12.89
 ./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.1 --rt-version 7.0.1-rt2
 ```
 
 | Patch/workstream | Upstream status | Next action |
 |-------|----------------|-----|
-| CVE-2026-31431 / Copy Fail / `algif_aead` | Fixed upstream in `7.0` and stable affected-range floors including `6.19.12`, `6.18.22`, `6.12.85`, `6.6.137`, `6.1.170`, `5.15.204`, and `5.10.254`; `v6.19.5-xr11` carries the `6.19.y` backport on the current `6.19.5` lab base | Keep fleet rollout on the host-proven `xr10` boot line until xr11 host boot evidence exists, then rebase the generic lane to a maintained target such as `7.0.5` stable or `6.18.28` longterm under issue #37. Treat stock 6.12-class hosts as exposed to Dirty Frag RxRPC unless a vendor backport, mitigation, or linux-xr route is proven and installed. |
-| CVE-2026-43284 / Dirty Frag ESP page-cache write | ESP shared-frag fix is in netdev/net commit `f4c50a4034e6` and published in stable floors including `6.12.87`, `6.18.28`, and `7.0.5`; the EOL `6.19.5` lab base remains protected by the repo backport in published `xr11` | Keep `v6.19.5-xr11` as the published secured lab release while boot-validating it, stop treating fixed maintained bases as needing the ESP backport, and keep `6.12.87` as a fallback candidate only after an RPM proof succeeds. |
-| CVE-2026-43500 / Dirty Frag RxRPC page-cache write | Debian now tracks the CVE and carries an `skb->data_len` RxRPC fix, but no NVD/CVE.org record or kernel.org upstream fixed floor is visible from the 2026-05-09 linux-xr check; published `xr11` carries RXKAD and RXGK linearize/COW backports | Boot-validate `xr11` for the EOL `6.19.5` lab line, and keep carrying RxRPC on source-sync candidates until upstream/vendor fixed floors are proven. |
+| CVE-2026-31431 / Copy Fail / `algif_aead` | Fixed upstream in `7.0` and stable affected-range floors including `6.19.12`, `6.18.22`, `6.12.85`, `6.6.137`, `6.1.170`, `5.15.204`, and `5.10.254`; `v6.19.5-xr11` carries the `6.19.y` backport on the current `6.19.5` lab base | Keep fleet rollout on the host-proven `xr10` boot line until xr11 host boot evidence exists, then rebase the generic lane to a maintained target such as `7.0.8` stable or `6.18.31` longterm under issue #37. Treat stock 6.12-class hosts as exposed to Dirty Frag RxRPC unless a vendor backport, mitigation, or linux-xr route is proven and installed. |
+| CVE-2026-43284 / Dirty Frag ESP page-cache write | ESP shared-frag fix is in netdev/net commit `f4c50a4034e6` and published in stable floors including `6.12.87`, `6.18.28`, and `7.0.5`; the EOL `6.19.5` lab base remains protected by the repo backport in published `xr11` | Keep `v6.19.5-xr11` as the published secured lab release while boot-validating it, stop treating fixed maintained bases as needing the ESP backport, and keep `6.12.89` as a fallback candidate only after an RPM proof succeeds. |
+| CVE-2026-43500 / Dirty Frag RxRPC page-cache write | NVD and CVE.org now publish the CVE; stable fixed floors include `6.18.29+` and `7.0.6+`, while the published `xr11` lab line carries RXKAD and RXGK linearize/COW backports on `6.19.5` | Boot-validate `xr11` for the EOL `6.19.5` lab line, stop applying the RxRPC backport on fixed `7.0.8`/`6.18.31` candidates, and keep carrying RxRPC on `6.12.x` fallback builds until a 6.12 fixed floor is proven. |
 | VESA DisplayID DSC BPP parser / amdgpu handling | In-flight upstream series; not present in current upstream checkout | Track Bolyukin v7 fixed-DSC-BPP series and drop this part when it lands. |
 | QP table + RC offset adjustments | Local carry; not submitted as a standalone upstream series | Split from the DisplayID parser carry using `xr/patches/0007-vesa-dsc-bpp.map.md` and decide whether this is evidence-backed upstream material or host-only risk. |
 | EDID non-desktop quirk for `BIG/0x1234` and `BIG/0x5095` | Absent from current upstream checkout | Follow `xr/patches/bigscreen-beyond-edid.route.md`: local `BIG/0x1234` evidence now proves `non-desktop=1`; next regenerate an upstream/drm-misc topic patch and send via the DRM route. |

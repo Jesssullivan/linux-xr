@@ -5,7 +5,7 @@ upstream stable target. It is separate from the RPM proof-build path.
 
 ## Current target
 
-As of 2026-05-10:
+As of 2026-05-16:
 
 - Current published/downloadable lab release line: `v6.19.5-xr11` from
   `xr/main` commit `e25a1a77`, with generic RPMs, RT RPMs, and `SHA256SUMS`
@@ -16,16 +16,19 @@ As of 2026-05-10:
   target hosts boot the exact `6.19.5-11.xr.el10` kernel and record SELinux,
   RPM, rollback, and default-boot evidence.
 - Bounded EOL compatibility proof target: `v6.19.14`
-- Maintained generic candidate targets: `v7.0.5` stable and `v6.18.28` longterm
-- Longterm fallback watch: `v6.12.87`, still pending a successful RPM proof.
-  `6.12.87` has `CVE-2026-43284` ESP fixed natively and now has a
-  repo-managed `CVE-2026-43500` RxRPC build route. The zero-fuzz DSC
-  carry conflict is fixed; the next proof gate is preserving the
-  `CONFIG_FW_LOADER_USER_HELPER=n` systemd/Rocky boot contract on this older
-  Kconfig while allowing hardening symbols that do not exist yet in `6.12.y` to
-  be absent rather than disabled.
+- Maintained generic candidate target: `v7.0.8` stable, with passing carry and
+  security preflights.
+- Maintained longterm fallback targets: `v6.18.31` and `v6.12.89`, both with
+  passing carry and security preflights.
+- Longterm fallback watch: `v6.12.89` still needs a successful RPM proof before
+  promotion. The zero-fuzz DSC carry conflict is fixed; the next proof gate is
+  preserving the `CONFIG_FW_LOADER_USER_HELPER=n` systemd/Rocky boot contract
+  on this older Kconfig while allowing hardening symbols that do not exist yet
+  in `6.12.y` to be absent rather than disabled.
 - RT candidate floor: `v7.0.1` with `patch-7.0.1-rt2`
-- RT blockers: newest stable `v7.0.5` has no matching RT patch yet; `v6.18.13-rt4` fails the CVE-2026-31431 gate because the repo does not carry a 6.18.13 backport
+- RT blockers: newest stable `v7.0.8` has no matching RT patch yet;
+  `v6.18.13-rt4` fails the CVE-2026-31431 gate because the repo does not carry
+  a 6.18.13 backport
 
 Do not merge `torvalds/linux:master` into an active lab release branch. For the
 current lab line, source sync should target the selected maintained stable or
@@ -64,17 +67,20 @@ Required checks before moving build defaults or release tags:
 ./xr/scripts/build-rpm.sh --kernel-version 6.19.14 --xr-release 1 --security-preflight-only
 
 # Maintained candidate checks:
-./xr/scripts/check-kernel-carry.sh --kernel-version 6.18.28
-./xr/scripts/build-rpm.sh --kernel-version 6.18.28 --xr-release 1 --security-preflight-only
-./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.5
-./xr/scripts/build-rpm.sh --kernel-version 7.0.5 --xr-release 1 --security-preflight-only
+./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.8
+./xr/scripts/build-rpm.sh --kernel-version 7.0.8 --xr-release 1 --security-preflight-only
+./xr/scripts/check-kernel-carry.sh --kernel-version 6.18.31
+./xr/scripts/build-rpm.sh --kernel-version 6.18.31 --xr-release 1 --security-preflight-only
+./xr/scripts/check-kernel-carry.sh --kernel-version 6.12.89
+./xr/scripts/build-rpm.sh --kernel-version 6.12.89 --xr-release 1 --security-preflight-only
 ```
 
-The `6.12.87` tarball contains the `CVE-2026-43284` ESP shared-frag hardening,
-but the `rxkad.c` tree does not contain the `CVE-2026-43500` Dirty Frag RxRPC
-linearize/COW hardening. Newer RXGK-capable bases also need the linux-xr RXGK
-response/DATA hardening until an upstream fixed floor is proven.
-Do not promote `6.12.87` as a linux-xr fallback until a real RPM proof succeeds
+The `6.12.89` tarball contains the `CVE-2026-43284` ESP shared-frag hardening,
+but the current public `CVE-2026-43500` fixed-floor evidence covers `6.18.29+`
+and `7.0.6+`, not a 6.12 fixed floor. Keep applying the linux-xr RXKAD/RXGK
+response/DATA hardening on `6.12.x` fallback builds until a 6.12 upstream or
+vendor fixed floor is proven.
+Do not promote `6.12.89` as a linux-xr fallback until a real RPM proof succeeds
 with the RxRPC security route and the systemd/Rocky firmware-loader helper
 guard intact.
 
@@ -84,19 +90,23 @@ RT remains separate until a compatible RT patch is proven:
 ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14 --rt-version 6.19.3-rt1
 ./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.1 --rt-version 7.0.1-rt2
 ./xr/scripts/build-rpm.sh --kernel-version 7.0.1 --xr-release 1 --rt-version 7.0.1-rt2 --security-preflight-only
+./xr/scripts/check-kernel-carry.sh --kernel-version 6.18.13 --rt-version 6.18.13-rt4
+./xr/scripts/build-rpm.sh --kernel-version 6.18.13 --xr-release 1 --rt-version 6.18.13-rt4 --security-preflight-only
 ```
 
 The `6.19.14` RT command is expected to fail with the current `6.19.3-rt1`
 patchset. The `7.0.1-rt2` lane passed carry and security preflights on
-2026-05-08, but it is behind latest stable `7.0.5`; treat it as an RT floor
-candidate, not the generic SOTA target.
+2026-05-16, but it is behind latest stable `7.0.8`; treat it as an RT floor
+candidate, not the generic SOTA target. The `6.18.13-rt4` lane applies the
+carry but fails the CVE-2026-31431 fixed-floor gate, so it must not be promoted
+without a backport or explicit validation-only override.
 
 ## Source-sync procedure
 
 1. Start from a clean, case-sensitive checkout with kernel history available.
 2. Fetch the selected stable or longterm target from the Linux stable tree.
 3. Create a dedicated branch from the selected target, for example
-   `codex/source-sync-v7.0.3` or `codex/source-sync-v6.18.26`.
+   `codex/source-sync-v7.0.8` or `codex/source-sync-v6.18.31`.
 4. Replay linux-xr-owned overlay files from the active control branch:
    `.github/`, `README.md`, `flake.nix`, `flake.lock`, `site/`, and `xr/`.
 5. Confirm the top-level `Makefile` reports the intended upstream base.
