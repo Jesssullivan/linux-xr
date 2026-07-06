@@ -236,7 +236,7 @@ dirtyfrag_esp_status() {
     fi
 
     if (( major > 7 )); then
-        echo "unknown"
+        echo "fixed-or-newer"
         return
     fi
 
@@ -246,6 +246,14 @@ dirtyfrag_esp_status() {
         else
             echo "vulnerable"
         fi
+        return
+    fi
+
+    if (( major == 7 )); then
+        # CVE-2026-43284 (Dirty Frag ESP) landed upstream at/before the 7.1
+        # branch cut; NVD lists 7.1 as an original_commit_for_fix floor. All
+        # 7.1.y+ bases carry the fix natively, so no repo backport is applied.
+        echo "fixed"
         return
     fi
 
@@ -370,7 +378,7 @@ dirtyfrag_rxrpc_status() {
     fi
 
     if (( major > 7 )); then
-        echo "unknown"
+        echo "fixed-or-newer"
         return
     fi
 
@@ -380,6 +388,14 @@ dirtyfrag_rxrpc_status() {
         else
             echo "vulnerable"
         fi
+        return
+    fi
+
+    if (( major == 7 )); then
+        # CVE-2026-43500 (Dirty Frag RxRPC/RXGK) landed upstream at/before the
+        # 7.1 branch cut; NVD lists 7.1 as an original_commit_for_fix floor.
+        # All 7.1.y+ bases carry the fix natively, so no repo backport is applied.
+        echo "fixed"
         return
     fi
 
