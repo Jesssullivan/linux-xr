@@ -5,35 +5,55 @@ upstream stable target. It is separate from the RPM proof-build path.
 
 ## Current target
 
-As of 2026-05-16:
+As of 2026-07-06:
 
+- **xr12 base re-home (D3 amendment, operator ruling 2026-07-06, `TIN-2317`).**
+  The maintained generic candidate re-homes off the `7.0.x` line onto the live
+  `7.1.y` stable line, pinned at `v7.1.3` (released 2026-07-04; kernel.org
+  `latest_stable`, verified live 2026-07-06). Mainline is `7.2-rc2`. The `7.0.y`
+  line's final point release is `v7.0.14` (2026-06-27; no `v7.0.15`), and
+  `7.1.y` is now the primary stable line that the ROCm/display-driver ingestion
+  for the Bigscreen Beyond path wants. The D3 principle is unchanged (stable
+  base + our carries + weekly upstream-watch); only the pinned line moves. The
+  fork is ours; the rebase cadence is accepted.
+- Maintained generic candidate target: `v7.1.3` stable. All three carries
+  (`0007-vesa-dsc-bpp.patch`, `bigscreen-beyond-edid.patch`,
+  `amdgpu-dsc-pps-debugfs.patch`) dry-run clean against `v7.1.3` with
+  RPM-compatible zero-fuzz matching, and the security preflight passes: all of
+  `CVE-2026-31431`, `CVE-2026-43284`, and `CVE-2026-43500` are fixed natively at
+  `7.1.3`, so none of the `xr/security/*` backports are applied on this base
+  (see `xr/security/README.md`).
 - Current published/downloadable lab release line: `v6.19.5-xr11` from
   `xr/main` commit `e25a1a77`, with generic RPMs, RT RPMs, and `SHA256SUMS`
   published on GitHub. It carries `CVE-2026-31431`, `CVE-2026-43284`, and both
-  `CVE-2026-43500` RxRPC RXKAD/RXGK backports.
+  `CVE-2026-43500` RxRPC RXKAD/RXGK backports. This stays the last published
+  line until a `7.1.3` generic RPM proof is built and host-validated.
 - Current host boot-proven line: `v6.19.5-xr10` is boot-proven on `mbp-13` and
-  `honey`. xr11 should not replace `xr10` in host-proven rollout docs until
-  target hosts boot the exact `6.19.5-11.xr.el10` kernel and record SELinux,
-  RPM, rollback, and default-boot evidence.
-- Bounded EOL compatibility proof target: `v6.19.14`
-- Maintained generic candidate target: `v7.0.8` stable, with passing carry and
-  security preflights.
+  `honey`. No `7.1.x` kernel is host boot-proven yet; promotion into any host
+  rollout doc still requires the exact `*-xr.el10` kernel to boot and record
+  SELinux, RPM, rollback, and default-boot evidence.
 - Maintained longterm fallback targets: `v6.18.31` and `v6.12.89`, both with
-  passing carry and security preflights.
+  passing carry and security preflights. These stay below the `CVE-2026-43284`
+  and `CVE-2026-43500` fixed floors, so they keep the gated `xr/security/*`
+  backports; do not remove the security patch files when re-homing to `7.1.y`.
 - Longterm fallback watch: `v6.12.89` still needs a successful RPM proof before
   promotion. The zero-fuzz DSC carry conflict is fixed; the next proof gate is
   preserving the `CONFIG_FW_LOADER_USER_HELPER=n` systemd/Rocky boot contract
   on this older Kconfig while allowing hardening symbols that do not exist yet
   in `6.12.y` to be absent rather than disabled.
-- RT candidate floor: `v7.0.1` with `patch-7.0.1-rt2`
-- RT blockers: newest stable `v7.0.8` has no matching RT patch yet;
-  `v6.18.13-rt4` fails the CVE-2026-31431 gate because the repo does not carry
-  a 6.18.13 backport
+- Bounded EOL compatibility proof target: `v6.19.14` (the `6.19.y` line is EOL).
+- RT candidate floor: `v7.0.1` with `patch-7.0.1-rt2` (last proven RT line).
+- RT blockers: no `7.1.x` PREEMPT_RT patchset has been proven against this base
+  yet, so RT stays pinned at `v7.0.1-rt2` until a compatible `7.1.x` RT patch or
+  refreshed local RT carry passes carry and security preflights. `v6.18.13-rt4`
+  still fails the CVE-2026-31431 gate because the repo does not carry a 6.18.13
+  backport.
 
-Do not merge `torvalds/linux:master` into an active lab release branch. For the
-current lab line, source sync should target the selected maintained stable or
-longterm base. Use `v6.19.14` only as a bounded compatibility proof because
-kernel.org now marks the `6.19.y` line EOL.
+Do not merge `torvalds/linux:master` into an active lab release branch (mainline
+`7.2-rc2` is refused by the security gate as an `-rc` base). For the current lab
+line, source sync should target the selected maintained stable or longterm base.
+Use `v6.19.14` only as a bounded compatibility proof because kernel.org marks
+the `6.19.y` line EOL.
 
 ## Boundary
 
@@ -67,6 +87,10 @@ Required checks before moving build defaults or release tags:
 ./xr/scripts/build-rpm.sh --kernel-version 6.19.14 --xr-release 1 --security-preflight-only
 
 # Maintained candidate checks:
+# Primary re-home target (D3 amendment, TIN-2317):
+./xr/scripts/check-kernel-carry.sh --kernel-version 7.1.3
+./xr/scripts/build-rpm.sh --kernel-version 7.1.3 --xr-release 1 --security-preflight-only
+# Prior 7.0.x candidate (superseded; kept for fallback comparison):
 ./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.8
 ./xr/scripts/build-rpm.sh --kernel-version 7.0.8 --xr-release 1 --security-preflight-only
 ./xr/scripts/check-kernel-carry.sh --kernel-version 6.18.31
