@@ -1,0 +1,169 @@
+name: Base Anchor (maintained candidate)
+
+# Full git-tree base anchor + RPM security preflight proof for the maintained
+# generic candidate kernel base. Runs on a case-sensitive Linux filesystem
+# (which a default macOS checkout cannot provide).
+#
+# Jobs:
+#   git-tree-anchor          (deliverable a) — AUTHORITATIVE zero-fuzz carry
+#                            proof: checks out the upstream stable tag
+#                            case-sensitive, verifies the Makefile triplet, and
+#                            applies every xr/patches carry with git apply
+#                            --check (strict, no fuzz) against the real tree.
+#   rpm-security-preflight   (deliverable c) — build-rpm.sh --security-preflight-only:
+#                            the version-based CVE floor gate at the candidate
+#                            base (no -rc, CVE floors satisfied). Self-contained;
+#                            exits before any tarball/carry staging.
+#   rpm-carry-dryrun         (advisory, non-blocking) — mirrors rpmbuild's
+#                            patch-based %prep (check-kernel-carry.sh). A failure
+#                            here means a carry needs a line-context refresh
+#                            before a 7.1.x RPM can build (carry-rebase lane
+#                            TIN-611 / NEW-1), which is PARKED out of this anchor
+#                            lane. git-tree-anchor above is authoritative for
+#                            "does the carry apply to the source."
+#
+# Context: executes the linux-xr 7.0.y -> 7.1.y re-home (D3 amendment, operator
+# ruling 2026-07-06, TIN-2317). Default candidate is the live 7.1.y stable head
+# v7.1.3 (re-verified live against kernel.org releases.json 2026-07-08 — still
+# the 7.1.y head, no v7.1.4; the 7.0.y line is EOL at v7.0.14). Override via the
+# workflow_dispatch input when the maintained candidate moves.
+#
+# Runner: ubuntu-latest (GitHub-hosted) — the lightweight public-source anchor +
+# preflight guard. It never builds RPMs: the artifact-producing generic RPM
+# *build* proof stays on capability-class GloriousFlywheel runners (tinyland-nix
+# / tinyland-nix-kvm) per house-bazel-rbe / TIN-550. RT is parked (no proven
+# 7.1.x PREEMPT_RT patchset — see xr/source-sync.md) and any host install is out
+# of scope (D13 operator-window packet; STING is the XR-candidate host per
+# operator ruling R2, 2026-07-08 — honey is not mutated in this lane).
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      kernel_version:
+        description: 'Maintained candidate kernel version (no leading v)'
+        required: true
+        default: '7.1.3'
+
+permissions:
+  contents: read
+
+env:
+  CANDIDATE_KVER: '7.1.3'
+
+jobs:
+  git-tree-anchor:
+    name: git-tree anchor (case-sensitive, zero-fuzz carry apply)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve candidate version
+        id: v
+        run: |
+          KVER="${{ github.event.inputs.kernel_version || env.CANDIDATE_KVER }}"
+          echo "kver=${KVER}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${KVER}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout linux-xr overlay
+        uses: actions/checkout@v6.0.2
+        with:
+          path: overlay
+          filter: blob:none
+          sparse-checkout: |
+            xr
+
+      - name: Shallow-clone upstream stable tag (case-sensitive Linux FS)
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.v.outputs.tag }}"
+          # Authoritative stable tree on kernel.org — the same host the weekly
+          # cadence already fetches from. Depth-1 single-tag clone bounds the
+          # fetch; the checkout materializes the full tree on a case-sensitive
+          # filesystem, which a default macOS checkout cannot do.
+          git clone --depth 1 --branch "${TAG}" --single-branch \
+            https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git linux-src
+          echo "Anchored base commit for ${TAG}:"
+          git -C linux-src rev-parse HEAD
+
+      - name: Verify Makefile reports the intended base
+        run: |
+          set -euo pipefail
+          KVER="${{ steps.v.outputs.kver }}"
+          IFS=. read -r WANT_V WANT_P WANT_S <<< "${KVER}"
+          GOT_V=$(awk -F'=' '/^VERSION =/{gsub(/ /,"",$2); print $2; exit}' linux-src/Makefile)
+          GOT_P=$(awk -F'=' '/^PATCHLEVEL =/{gsub(/ /,"",$2); print $2; exit}' linux-src/Makefile)
+          GOT_S=$(awk -F'=' '/^SUBLEVEL =/{gsub(/ /,"",$2); print $2; exit}' linux-src/Makefile)
+          echo "Makefile reports ${GOT_V}.${GOT_P}.${GOT_S}; wanted ${WANT_V}.${WANT_P}.${WANT_S}"
+          test "${GOT_V}.${GOT_P}.${GOT_S}" = "${WANT_V}.${WANT_P}.${WANT_S}"
+
+      - name: Zero-fuzz carry apply against the real git tree (authoritative)
+        run: |
+          set -euo pipefail
+          rc=0
+          while IFS= read -r p || [ -n "$p" ]; do
+            [ -z "$p" ] && continue
+            case "$p" in \#*) continue ;; esac
+            patch="${GITHUB_WORKSPACE}/overlay/xr/patches/${p}"
+            echo "=== git apply --check (zero-fuzz) ${p} ==="
+            if git -C linux-src apply --check -p1 "${patch}"; then
+              echo "OK: ${p}"
+            else
+              echo "FAIL: ${p} does not apply zero-fuzz against ${{ steps.v.outputs.tag }}"
+              rc=1
+            fi
+          done < "${GITHUB_WORKSPACE}/overlay/xr/patches/series"
+          exit $rc
+
+  rpm-security-preflight:
+    name: RPM security preflight (--security-preflight-only)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve candidate version
+        id: v
+        run: |
+          KVER="${{ github.event.inputs.kernel_version || env.CANDIDATE_KVER }}"
+          echo "kver=${KVER}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout linux-xr overlay
+        uses: actions/checkout@v6.0.2
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            xr
+
+      - name: RPM security preflight gate
+        run: bash xr/scripts/build-rpm.sh --kernel-version "${{ steps.v.outputs.kver }}" --xr-release 1 --security-preflight-only
+
+  rpm-carry-dryrun:
+    name: RPM carry dry-run (advisory — tracks TIN-611)
+    runs-on: ubuntu-latest
+    # Advisory only: git-tree-anchor (git apply --check) is authoritative for
+    # carry application. This job mirrors rpmbuild %prep (patch-based) and will
+    # go green when the carry-refresh (TIN-611 / NEW-1) lands. Non-blocking
+    # because carry-rebase onto 7.1.y is parked out of this anchor lane.
+    continue-on-error: true
+    steps:
+      - name: Resolve candidate version
+        id: v
+        run: |
+          KVER="${{ github.event.inputs.kernel_version || env.CANDIDATE_KVER }}"
+          echo "kver=${KVER}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout linux-xr overlay
+        uses: actions/checkout@v6.0.2
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            xr
+
+      - name: Install preflight deps
+        run: sudo apt-get update -y && sudo apt-get install -y patch xz-utils tar curl diffutils findutils
+
+      - name: Patch-path carry dry-run (advisory)
+        run: |
+          echo "Advisory: the authoritative zero-fuzz carry proof is the"
+          echo "git-tree-anchor job (git apply --check). This mirrors rpmbuild"
+          echo "%prep (patch-based); a failure means a carry needs a line-context"
+          echo "refresh before a 7.1.x RPM can build — carry-rebase lane TIN-611"
+          echo "/ prompt-72 NEW-1, parked out of the F72 anchor lane."
+          bash xr/scripts/check-kernel-carry.sh --kernel-version "${{ steps.v.outputs.kver }}"
