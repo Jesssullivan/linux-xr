@@ -22,7 +22,7 @@ jobs:
         run: |
           git fetch --no-tags --prune https://github.com/torvalds/linux.git master:refs/remotes/upstream/master
           git fetch --no-tags --prune https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git \
-            linux-7.0.y:refs/remotes/stable/linux-7.0.y \
+            linux-7.1.y:refs/remotes/stable/linux-7.1.y \
             linux-6.18.y:refs/remotes/longterm/linux-6.18.y
 
       - name: Generate cadence report
@@ -31,7 +31,7 @@ jobs:
           xr/scripts/generate-cadence-report.sh \
             --base-ref HEAD \
             --upstream-ref refs/remotes/upstream/master \
-            --stable-ref refs/remotes/stable/linux-7.0.y \
+            --stable-ref refs/remotes/stable/linux-7.1.y \
             --stable-ref refs/remotes/longterm/linux-6.18.y \
             --output cadence-report.md
           sed -n '1,200p' cadence-report.md
