@@ -18,10 +18,9 @@ Signed-off-by: Jess Sullivan <jess@jesssullivan.dev>
  1 file changed, 61 insertions(+)
 
 diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c
-index 000000000000..111111111111 100644
 --- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c
 +++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c
-@@ -2268,6 +2268,66 @@ static ssize_t dp_dsc_bits_per_pixel_write(struct file *f, const char __user *bu
+@@ -2271,6 +2271,66 @@ done:
  	return size;
  }
  
@@ -88,7 +87,7 @@ index 000000000000..111111111111 100644
  /* function: read DSC picture width parameter on the connector
   *
   * The read function: dp_dsc_pic_width_read
-@@ -3107,6 +3167,7 @@ static const struct {
+@@ -3112,6 +3172,7 @@ static const struct {
  		{"dsc_slice_width", &dp_dsc_slice_width_debugfs_fops},
  		{"dsc_slice_height", &dp_dsc_slice_height_debugfs_fops},
  		{"dsc_bits_per_pixel", &dp_dsc_bits_per_pixel_debugfs_fops},
