@@ -190,10 +190,14 @@ scripts/config --disable CONFIG_ITCO_WDT
 #
 # It is not inert. Upstream fs/xfs/Kconfig on XFS_DEBUG: "the resulting code
 # will be HUGE and SLOW ... Say N unless you are an XFS developer, or you play
-# one on TV." The companion XFS_WARN entry states the distinction plainly --
-# WARN "is much lighter weight than XFS_DEBUG and does not modify algorithms
-# and will not cause the kernel to panic on non-fatal errors", i.e. XFS_DEBUG
-# does both. Concretely, XFS_DEBUG activates
+# one on TV." Dave Chinner is blunter in 742ae1e35b03 ("xfs: introduce
+# CONFIG_XFS_WARN", 2013-04-30), the commit that exists because of exactly this
+# mistake: "Running a CONFIG_XFS_DEBUG kernel in production environments is not
+# the best idea as it introduces significant overhead, can change the behaviour
+# of algorithms (such as allocation) to improve test coverage, and (most
+# importantly) panic the machine on non-fatal errors."
+#
+# Concretely, XFS_DEBUG activates
 # `do_sparse = get_random_u32_below(2)` in xfs_ialloc_ag_alloc(), forcing
 # sparse-inode allocation on a coin flip for test coverage, and
 # XFS_ASSERT_FATAL turns a non-fatal ASSERT into a filesystem shutdown.
