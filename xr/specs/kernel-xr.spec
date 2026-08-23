@@ -182,6 +182,42 @@ scripts/config --disable CONFIG_LEDS_LP5569
 scripts/config --disable CONFIG_LEDS_LP8501
 scripts/config --disable CONFIG_ITCO_WDT
 
+# XFS must not ship as a filesystem test harness on production hosts.
+# base.config inherits CONFIG_XFS_DEBUG=y + CONFIG_XFS_ASSERT_FATAL=y from the
+# scraped vendor config (base.config:10218,10220). That is accidental: this
+# kernel exists for VR display work and none of the carry patches in
+# xr/patches/series touch filesystem code.
+#
+# It is not inert. Upstream fs/xfs/Kconfig on XFS_DEBUG: "the resulting code
+# will be HUGE and SLOW ... Say N unless you are an XFS developer, or you play
+# one on TV." Dave Chinner is blunter in 742ae1e35b03 ("xfs: introduce
+# CONFIG_XFS_WARN", 2013-04-30), the commit that exists because of exactly this
+# mistake: "Running a CONFIG_XFS_DEBUG kernel in production environments is not
+# the best idea as it introduces significant overhead, can change the behaviour
+# of algorithms (such as allocation) to improve test coverage, and (most
+# importantly) panic the machine on non-fatal errors."
+#
+# Concretely, XFS_DEBUG activates
+# `do_sparse = get_random_u32_below(2)` in xfs_ialloc_ag_alloc(), forcing
+# sparse-inode allocation on a coin flip for test coverage, and
+# XFS_ASSERT_FATAL turns a non-fatal ASSERT into a filesystem shutdown.
+#
+# 2026-08-22 incident: honey's data-containers volume (/var/lib/rancher) shut
+# down on an invalid sparse inode record; xfs_inobt_insert_sprec() is in the
+# trace. honey went NotReady ~65 minutes with 81 pods stranded. sting carries
+# the identical config. bumble runs the stock Rocky kernel with both off and
+# has never entered that path.
+#
+# XFS_WARN is deliberately left off too: it is the lighter diagnostic
+# alternative, but nothing here is debugging an XFS problem. Turn it on only
+# for a specific investigation.
+#
+# Live oracle: /sys/fs/xfs/debug/ exists only under CONFIG_XFS_DEBUG=y. It must
+# be absent on every host running this kernel.
+scripts/config --disable CONFIG_XFS_DEBUG
+scripts/config --disable CONFIG_XFS_DEBUG_EXPENSIVE
+scripts/config --disable CONFIG_XFS_ASSERT_FATAL
+
 # BCI workload support (CPU isolation, high-res timers)
 scripts/config --enable CONFIG_CPU_ISOLATION
 scripts/config --enable CONFIG_NO_HZ_FULL
@@ -246,6 +282,9 @@ scripts/config --disable CONFIG_FW_LOADER_USER_HELPER
 scripts/config --disable CONFIG_DEBUG_INFO_NONE
 scripts/config --disable CONFIG_DEBUG_INFO_REDUCED
 scripts/config --enable CONFIG_DEBUG_INFO_BTF
+scripts/config --disable CONFIG_XFS_DEBUG
+scripts/config --disable CONFIG_XFS_DEBUG_EXPENSIVE
+scripts/config --disable CONFIG_XFS_ASSERT_FATAL
 
 # Run olddefconfig again to resolve any new dependencies from re-applied overrides
 make olddefconfig
@@ -284,6 +323,13 @@ check_config CONFIG_DEBUG_INFO_NONE n
 check_config CONFIG_DEBUG_INFO_REDUCED n
 check_config CONFIG_BPF_SYSCALL y
 check_config CONFIG_CGROUP_BPF y
+# Fleet contract: never ship an XFS test-harness build. See the override block
+# above and the 2026-08-22 honey filesystem shutdown. XFS_ASSERT_FATAL depends
+# on XFS_DEBUG, so it goes absent rather than =n once XFS_DEBUG is off; both
+# forms pass here.
+check_config CONFIG_XFS_DEBUG n
+check_config CONFIG_XFS_DEBUG_EXPENSIVE n
+check_config CONFIG_XFS_ASSERT_FATAL n
 %if "%{rt_version}" != ""
 check_config CONFIG_EXPERT y
 check_config CONFIG_PREEMPT_RT y
@@ -292,7 +338,8 @@ check_config CONFIG_PREEMPT_VOLUNTARY n
 %endif
 if [ "$fail" -ne 0 ]; then
     echo "FATAL: Critical kernel config validation failed. Aborting build."
-    echo "This kernel would fail to boot on systemd 257 (Rocky 10.1)."
+    echo "See the FAIL lines above: this kernel would either fail to boot on"
+    echo "systemd 257 (Rocky 10.1) or ship a config the fleet contract forbids."
     exit 1
 fi
 
