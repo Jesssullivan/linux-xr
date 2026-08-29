@@ -242,8 +242,9 @@ Use a Linux or case-sensitive checkout for source truth. On macOS, do not treat 
 Tag push (`v6.19.5-xr2`) or manual dispatch triggers RPM builds on
 [tinyland-docker](https://github.com/tinyland-inc/GloriousFlywheel) ARC runners (4 CPU / 16Gi).
 
-Both variants are built sequentially (sharing ccache) and attached to a single
-GitHub Release.
+A tag build builds both variants and attaches them to a single GitHub Release.
+`max-parallel` is 1, so the two variants build sequentially, but they do **not**
+share a ccache: the cache directory and cache key are both per-variant.
 
 Manual dispatch supports building a single variant:
 ```bash
@@ -255,7 +256,14 @@ gh workflow run build-kernel.yml -f kernel_version=6.19.5 -f xr_release=10 -f va
 Build optimizations:
 - `CONFIG_DEBUG_INFO=n` — reduces link-time memory from ~8GB to ~2GB
 - Parallelism capped at `-j4` — prevents OOM on memory-constrained runners
-- ccache with `save-always: true` — warm builds ~1h vs cold ~2h
+- ccache, restored and saved by explicit `actions/cache` steps (the save runs
+  `if: always()`, so a cancelled build still banks its cache) — a warm build ran
+  43m40s against 4h06m cold for the same tag (run `32764070756`); a cold build
+  has ranged 3.5–6h
+- `use_ccache` defaults to `true` on manual dispatch; pass `-f use_ccache=false`
+  for a deliberately cold build. Cache scope means a dispatch on `xr/main`
+  cannot read a tag build's ccache, so the first build on a new base is cold
+  regardless
 - `weekly-cadence.yml` — fetches upstream plus maintained `linux-7.0.y` stable and `linux-6.18.y` longterm refs, renders a markdown report from `xr/patches/series`, checks carry patch application when full source paths are available, includes the current security watch, and opens a weekly cadence issue
 - `xr/scripts/triage-upstream-targets.sh` — discovers latest maintained generic and RT candidate floors from kernel.org and can run the bounded carry/security preflights used before source-sync promotion
 

@@ -4,10 +4,13 @@ on:
   push:
     tags:
       - 'v*-xr*'
+  # Dispatch defaults are set for the common case: one generic variant, warm
+  # cache. Both used to default the expensive way, and a dropdown nobody
+  # remembers to change is not a knob, it is a tax on every manual build.
   workflow_dispatch:
     inputs:
       kernel_version:
-        description: 'Kernel version (e.g., 6.19.5)'
+        description: 'Kernel version, e.g. 6.19.5. NOTE: 6.19.y is EOL upstream; the maintained lines are 6.18.y (LTS) and 7.1.y'
         required: true
         default: '6.19.5'
       xr_release:
@@ -15,26 +18,38 @@ on:
         required: true
         default: '1'
       rt_version:
-        description: 'RT patch version (empty to skip RT)'
+        description: 'RT patch version (empty to skip RT). Only consulted when variant is rt or both. The 6.19.3-rt1 default is pinned to the 6.19 line -- change it if you change kernel_version (xr/source-sync.md pins the last proven RT lane at v7.0.1-rt2)'
         required: false
         default: '6.19.3-rt1'
       variant:
-        description: 'Which variant(s) to build'
+        # The `Check variant filter` step runs INSIDE each matrix job, and
+        # max-parallel is 1, so `both` does not fan out -- it serialises two
+        # builds back to back, observed at 1h47m-2h54m per variant (runs
+        # 23221273296 / 25202336642 / 25609434372); a cold generic build has
+        # reached 4h06m. No fleet host currently *boots* RT (site/docs/honey.md
+        # records 2026-04-12 smoke evidence only) and 7.1.x RT is parked (see
+        # base-anchor.yml), and tag builds still build both regardless of this
+        # input, so a manual build defaults to generic.
+        description: 'Which variant(s) to build. `both` roughly doubles wall clock'
         required: true
         type: choice
         options:
-          - both
-          - rt
           - generic
-        default: 'both'
+          - rt
+          - both
+        default: 'generic'
       use_ccache:
-        description: 'Restore/save ccache (can add large cache transfer time)'
+        # Push/tag builds always restore and save ccache; only workflow_dispatch
+        # gated it behind this input, and defaulting it off meant every manual
+        # build since the workflow landed has been a cold build. Same behaviour
+        # as a push build now, opt out if you specifically want a cold one.
+        description: 'Restore/save ccache. Off means a cold build'
         required: true
         type: choice
         options:
-          - 'false'
           - 'true'
-        default: 'false'
+          - 'false'
+        default: 'true'
 
 jobs:
   build-rpm:
@@ -126,10 +141,18 @@ jobs:
         with:
           path: ${{ runner.temp }}/linux-xr-ccache-${{ matrix.variant.name }}
           key: ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-${{ github.sha }}
+          # Ordered most specific to least. The last key is version-agnostic on
+          # purpose: every other key embeds kversion, so a build on a NEW base
+          # (6.18.y, 7.1.y) matched nothing and went fully cold. ccache is
+          # content-addressed, so seeding off another version is a hit-rate
+          # question, never a correctness one. Cache scope still applies -- a
+          # run can only read its own ref plus the default branch, so a branch
+          # dispatch cannot reach a tag build's ccache.
           restore-keys: |
             ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-
             ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-
             ccache-${{ steps.version.outputs.kversion }}-
+            ccache-${{ matrix.variant.name }}-
 
       - name: Restore kernel sources
         if: steps.filter.outputs.skip != 'true'
