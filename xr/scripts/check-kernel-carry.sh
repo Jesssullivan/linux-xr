@@ -131,6 +131,14 @@ if [[ -n "${RT_VERSION}" ]]; then
 fi
 
 echo ">>> Dry-running linux-xr carry patches against ${KERNEL_VERSION}"
+# KNOWN LIMITATION (documented 2026-08-29, TIN-611 / TIN-4065): --dry-run never
+# writes, so each carry below is checked against the PRISTINE extraction rather
+# than against the tree as modified by the earlier entries in series order.
+# rpmbuild's %prep applies them cumulatively. Today the two agree, because
+# 0007-vesa-dsc-bpp.patch and bigscreen-beyond-edid.patch touch non-overlapping
+# line ranges of drm_edid.c and nothing else in series overlaps. A future carry
+# that lands in the same region as an earlier one would pass here and still
+# fail in %prep. Verify cumulatively before adding one.
 while IFS= read -r patch_file; do
     case "${patch_file}" in
         ""|\#*)
