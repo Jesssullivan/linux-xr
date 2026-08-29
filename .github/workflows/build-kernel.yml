@@ -18,15 +18,18 @@ on:
         required: true
         default: '1'
       rt_version:
-        description: 'RT patch version (empty to skip RT). Only consulted when variant is rt or both'
+        description: 'RT patch version (empty to skip RT). Only consulted when variant is rt or both. The 6.19.3-rt1 default is pinned to the 6.19 line -- change it if you change kernel_version (xr/source-sync.md pins the last proven RT lane at v7.0.1-rt2)'
         required: false
         default: '6.19.3-rt1'
       variant:
         # The `Check variant filter` step runs INSIDE each matrix job, and
         # max-parallel is 1, so `both` does not fan out -- it serialises two
-        # 2h16m-3h24m builds back to back. The fleet does not run RT, and tag
-        # builds still build both regardless of this input, so a manual build
-        # defaults to the one variant that gets consumed.
+        # builds back to back, observed at 1h47m-2h54m per variant (runs
+        # 23221273296 / 25202336642 / 25609434372); a cold generic build has
+        # reached 4h06m. No fleet host currently *boots* RT (site/docs/honey.md
+        # records 2026-04-12 smoke evidence only) and 7.1.x RT is parked (see
+        # base-anchor.yml), and tag builds still build both regardless of this
+        # input, so a manual build defaults to generic.
         description: 'Which variant(s) to build. `both` roughly doubles wall clock'
         required: true
         type: choice
@@ -138,10 +141,18 @@ jobs:
         with:
           path: ${{ runner.temp }}/linux-xr-ccache-${{ matrix.variant.name }}
           key: ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-${{ github.sha }}
+          # Ordered most specific to least. The last key is version-agnostic on
+          # purpose: every other key embeds kversion, so a build on a NEW base
+          # (6.18.y, 7.1.y) matched nothing and went fully cold. ccache is
+          # content-addressed, so seeding off another version is a hit-rate
+          # question, never a correctness one. Cache scope still applies -- a
+          # run can only read its own ref plus the default branch, so a branch
+          # dispatch cannot reach a tag build's ccache.
           restore-keys: |
             ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-${{ hashFiles('xr/config/base.config') }}-
             ccache-${{ matrix.variant.name }}-${{ steps.version.outputs.kversion }}-
             ccache-${{ steps.version.outputs.kversion }}-
+            ccache-${{ matrix.variant.name }}-
 
       - name: Restore kernel sources
         if: steps.filter.outputs.skip != 'true'
