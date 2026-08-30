@@ -8,8 +8,17 @@ name: Base Anchor (maintained candidate)
 #   git-tree-anchor          (deliverable a) — AUTHORITATIVE zero-fuzz carry
 #                            proof: checks out the upstream stable tag
 #                            case-sensitive, verifies the Makefile triplet, and
-#                            applies every xr/patches carry with git apply
+#                            checks every xr/patches carry with git apply
 #                            --check (strict, no fuzz) against the real tree.
+#                            KNOWN LIMITATION — the SAME one documented in
+#                            xr/scripts/check-kernel-carry.sh: --check never
+#                            writes, so each carry is checked INDEPENDENTLY
+#                            against the pristine tag tree, not against the tree
+#                            as modified by earlier entries in series order.
+#                            This job is authoritative for "does each carry
+#                            apply zero-fuzz to the stock tag." It does NOT
+#                            model rpmbuild's cumulative %prep, and no job in
+#                            this file does.
 #   rpm-security-preflight   (deliverable c) — build-rpm.sh --security-preflight-only:
 #                            the version-based CVE floor gate at the candidate
 #                            base (no -rc, CVE floors satisfied). Self-contained;
@@ -28,7 +37,11 @@ name: Base Anchor (maintained candidate)
 #                            #85 regenerated amdgpu-dsc-pps-debugfs.patch off
 #                            7.0.x context onto v7.1.3. All three carries now
 #                            apply with zero rejects and zero fuzz at v7.1.12,
-#                            cumulatively, in real %prep order. Do not re-derive
+#                            cumulatively, in real %prep order — but that
+#                            CUMULATIVE result is a LOCAL REPRODUCTION recorded
+#                            in xr/source-sync.md, not a product of any job in
+#                            this file. Both jobs here are pristine-per-patch.
+#                            Do not re-derive
 #                            "the carries are broken" from this comment block.
 #                            What TIN-611 still owes is the 0007a/0007b/0007c
 #                            SPLIT of the combined DSC carry — a code-reduction
@@ -154,7 +167,10 @@ jobs:
     name: RPM carry dry-run (advisory — tracks TIN-611)
     runs-on: ubuntu-latest
     # Advisory only: git-tree-anchor (git apply --check) is authoritative for
-    # carry application. This job mirrors rpmbuild %prep (patch-based).
+    # carry application. This job mirrors rpmbuild %prep (patch-based) in its
+    # per-patch invocation, but NOT in ordering: like git-tree-anchor, it checks
+    # each carry against a pristine tree, so neither job in this file models
+    # cumulative %prep. The cumulative result lives in xr/source-sync.md.
     # As of 2026-08-29 it is GREEN at the candidate base; it is kept
     # non-blocking so an upstream point release that shifts context is reported
     # rather than wedging the anchor lane. Lifting continue-on-error is a
@@ -186,4 +202,8 @@ jobs:
           echo "and a carry needs a line-context refresh before an RPM builds."
           echo "Note: this script dry-runs each carry independently against a"
           echo "pristine tree, so it does not model cumulative %prep ordering."
+          echo "Neither does git-tree-anchor: git apply --check never writes,"
+          echo "so it too checks each carry against the pristine tag tree. The"
+          echo "cumulative %prep proof is the local reproduction recorded in"
+          echo "xr/source-sync.md, not any job in this workflow."
           bash xr/scripts/check-kernel-carry.sh --kernel-version "${{ steps.v.outputs.kver }}"

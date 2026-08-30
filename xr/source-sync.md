@@ -28,8 +28,14 @@ As of 2026-08-29 (pin moved from `v7.1.3`; ruling record below unchanged):
   three carries (`0007-vesa-dsc-bpp.patch`, `bigscreen-beyond-edid.patch`,
   `amdgpu-dsc-pps-debugfs.patch`) apply with **zero rejects and zero fuzz**
   against `v7.1.12`, under every path that matters:
-  - `git apply --check -p1`, cumulative in `series` order — clean (this is the
-    `base-anchor.yml` `git-tree-anchor` authoritative proof);
+  - `git apply --check -p1`, cumulative in `series` order — clean. This
+    cumulative run is the **local reproduction** recorded here. CI's
+    `base-anchor.yml` `git-tree-anchor` job runs the same
+    `git apply --check -p1`, but it checks each carry **independently against
+    the pristine `v7.1.12` tag tree** — `--check` never writes, so no earlier
+    carry is in the tree when the next one is checked. It is authoritative for
+    "does each carry apply zero-fuzz to the stock tag"; it is not a cumulative
+    proof, and no job in `base-anchor.yml` is;
   - `patch --batch -p1 --fuzz=0 --dry-run` against a pristine tree, per patch —
     clean (this is the `check-kernel-carry.sh` / `rpm-carry-dryrun` path);
   - **cumulative `%prep` replication** in real spec order and with each patch's
@@ -50,6 +56,22 @@ As of 2026-08-29 (pin moved from `v7.1.3`; ruling record below unchanged):
   quirk); `amdgpu_dm_debugfs.c` needed no offset at all. Offset is not fuzz —
   context matched exactly in every case. **No carry needed a line-context
   refresh and none was made.**
+
+  **Why the pristine-per-patch checks and the cumulative `%prep` run agree at
+  this base — derived, not asserted.** In `series` order the only
+  `0007-vesa-dsc-bpp.patch` hunk touching `drm_edid.c` *ahead of* the bigscreen
+  quirk is `@@ -45,6 +45,7 @@` — a net **+1** line at line 45; that carry's
+  next `drm_edid.c` hunk is way down at line 6566.
+  `bigscreen-beyond-edid.patch` targets lines **125** and **222** of the same
+  file, which sit strictly between those two points and share no context lines
+  with either, so applying `0007` first shifts bigscreen's targets by exactly
+  one line and disturbs nothing else: its pristine per-patch offsets of
+  **+24/+25** become exactly the **+25/+26** recorded above. The third carry,
+  `amdgpu-dsc-pps-debugfs.patch`, touches only `amdgpu_dm_debugfs.c`, which no
+  other carry in `series` touches at all. That arithmetic — not any property of
+  the checks themselves — is the entire reason a pristine-per-patch verdict and
+  a cumulative one coincide here. It is a fact about the current hunk layout and
+  must be re-derived whenever a carry is added, split, or moved.
 - **The "carries need a line-context refresh before a 7.1.x RPM builds" claim
   is retired.** It was true before 2026-07-09, when
   `amdgpu-dsc-pps-debugfs.patch` was still stamped against `7.0.x` context; PR

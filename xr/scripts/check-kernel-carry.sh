@@ -22,6 +22,11 @@ Downloads a kernel.org tarball, optionally dry-runs the matching PREEMPT_RT
 patch first, then dry-runs every patch listed in xr/patches/series with
 RPM-compatible zero-fuzz matching.
 
+Zero-fuzz applies to the xr/patches carries only. The optional --rt-version
+dry-run deliberately runs bare `patch -p1` at patch(1)'s default fuzz, because
+that is how kernel-xr.spec applies the PREEMPT_RT patchset; it is not, and is
+not meant to be, a zero-fuzz check.
+
 Examples:
   ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14
   ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14 --rt-version 6.19.3-rt1
