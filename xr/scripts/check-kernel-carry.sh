@@ -22,6 +22,11 @@ Downloads a kernel.org tarball, optionally dry-runs the matching PREEMPT_RT
 patch first, then dry-runs every patch listed in xr/patches/series with
 RPM-compatible zero-fuzz matching.
 
+Zero-fuzz applies to the xr/patches carries only. The optional --rt-version
+dry-run deliberately runs bare `patch -p1` at patch(1)'s default fuzz, because
+that is how kernel-xr.spec applies the PREEMPT_RT patchset; it is not, and is
+not meant to be, a zero-fuzz check.
+
 Examples:
   ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14
   ./xr/scripts/check-kernel-carry.sh --kernel-version 6.19.14 --rt-version 6.19.3-rt1
@@ -131,6 +136,14 @@ if [[ -n "${RT_VERSION}" ]]; then
 fi
 
 echo ">>> Dry-running linux-xr carry patches against ${KERNEL_VERSION}"
+# KNOWN LIMITATION (documented 2026-08-29, TIN-611 / TIN-4065): --dry-run never
+# writes, so each carry below is checked against the PRISTINE extraction rather
+# than against the tree as modified by the earlier entries in series order.
+# rpmbuild's %prep applies them cumulatively. Today the two agree, because
+# 0007-vesa-dsc-bpp.patch and bigscreen-beyond-edid.patch touch non-overlapping
+# line ranges of drm_edid.c and nothing else in series overlaps. A future carry
+# that lands in the same region as an earlier one would pass here and still
+# fail in %prep. Verify cumulatively before adding one.
 while IFS= read -r patch_file; do
     case "${patch_file}" in
         ""|\#*)

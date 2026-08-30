@@ -5,29 +5,101 @@ upstream stable target. It is separate from the RPM proof-build path.
 
 ## Current target
 
-As of 2026-07-06:
+As of 2026-08-29 (pin moved from `v7.1.3`; ruling record below unchanged):
 
 - **xr12 base re-home (D3 amendment, operator ruling 2026-07-06, `TIN-2317`).**
   The maintained generic candidate re-homes off the `7.0.x` line onto the live
-  `7.1.y` stable line, pinned at `v7.1.3` (released 2026-07-04; kernel.org
-  `latest_stable`, verified live 2026-07-06). Mainline is `7.2-rc2`. The `7.0.y`
-  line's final point release is `v7.0.14` (2026-06-27; no `v7.0.15`), and
-  `7.1.y` is now the primary stable line that the ROCm/display-driver ingestion
-  for the Bigscreen Beyond path wants. The D3 principle is unchanged (stable
-  base + our carries + weekly upstream-watch); only the pinned line moves. The
-  fork is ours; the rebase cadence is accepted.
-- Maintained generic candidate target: `v7.1.3` stable. All three carries
-  (`0007-vesa-dsc-bpp.patch`, `bigscreen-beyond-edid.patch`,
-  `amdgpu-dsc-pps-debugfs.patch`) dry-run clean against `v7.1.3` with
-  RPM-compatible zero-fuzz matching, and the security preflight passes: all of
-  `CVE-2026-31431`, `CVE-2026-43284`, and `CVE-2026-43500` are fixed natively at
-  `7.1.3`, so none of the `xr/security/*` backports are applied on this base
-  (see `xr/security/README.md`).
+  `7.1.y` stable line. When the ruling was taken, the `7.1.y` head was `v7.1.3`
+  (released 2026-07-04) and mainline was `7.2-rc2`. The `7.0.y` line's final
+  point release is `v7.0.14` (2026-06-27; no `v7.0.15`), and `7.1.y` is the
+  primary stable line that the ROCm/display-driver ingestion for the Bigscreen
+  Beyond path wants. The D3 principle is unchanged (stable base + our carries +
+  weekly upstream-watch); only the pinned line moves. The fork is ours; the
+  rebase cadence is accepted.
+- **Maintained generic candidate target: `v7.1.12` stable** (released
+  2026-08-28; current `7.1.y` head per kernel.org `releases.json`, `iseol:
+  false`, verified live 2026-08-29). This advances the pin from `v7.1.3`, which
+  was nine point releases stale. Tarball
+  `linux-7.1.12.tar.xz` sha256
+  `389716b3ed27e4cd520b903eea04acc33b9804c4282cb7a918f05ff14e9b5ae1`, matched
+  against kernel.org `sha256sums.asc`; `Makefile` triplet confirmed
+  `VERSION=7 PATCHLEVEL=1 SUBLEVEL=12`.
+- **Carry verification at `v7.1.12` (2026-08-29, `TIN-611` / `TIN-4065`).** All
+  three carries (`0007-vesa-dsc-bpp.patch`, `bigscreen-beyond-edid.patch`,
+  `amdgpu-dsc-pps-debugfs.patch`) apply with **zero rejects and zero fuzz**
+  against `v7.1.12`, under every path that matters:
+  - `git apply --check -p1`, cumulative in `series` order — clean. This
+    cumulative run is the **local reproduction** recorded here. CI's
+    `base-anchor.yml` `git-tree-anchor` job runs the same
+    `git apply --check -p1`, but it checks each carry **independently against
+    the pristine `v7.1.12` tag tree** — `--check` never writes, so no earlier
+    carry is in the tree when the next one is checked. It is authoritative for
+    "does each carry apply zero-fuzz to the stock tag"; it is not a cumulative
+    proof, and no job in `base-anchor.yml` is;
+  - `patch --batch -p1 --fuzz=0 --dry-run` against a pristine tree, per patch —
+    clean (this is the `check-kernel-carry.sh` / `rpm-carry-dryrun` path);
+  - **cumulative `%prep` replication** in real spec order and with each patch's
+    real invocation (`%patch -P0` → `--fuzz=0`, then the raw
+    `patch -p1 --fuzz=3` for `bigscreen-beyond-edid.patch`, then `%patch -P20`
+    → `--fuzz=0`) — clean. `rpm`'s `%_default_patch_fuzz` is `0` and
+    `%__scm_apply_patch` embeds `--fuzz=%{_default_patch_fuzz}` (verified in
+    `rpm-software-management/rpm` `macros.in`, branches `rpm-4.19.x`,
+    `rpm-4.20.x`, `master`), so `%patch -PN -p1` *is* the zero-fuzz path on the
+    `rockylinux/rockylinux:10` build image.
+  - A stricter-than-spec variant (cumulative, `--fuzz=0` for **all three**,
+    including `bigscreen-beyond-edid.patch`) is also clean, so the spec's
+    `--fuzz=3` override for that one patch is currently unnecessary headroom
+    rather than a load-bearing crutch.
+
+  Every hunk that moved did so by **pure line offset** (amdgpu_dm.c +127,
+  drm_edid.c +32/+73, drm_connector.h +2, drm_edid.c +25/+26 for the bigscreen
+  quirk); `amdgpu_dm_debugfs.c` needed no offset at all. Offset is not fuzz —
+  context matched exactly in every case. **No carry needed a line-context
+  refresh and none was made.**
+
+  **Why the pristine-per-patch checks and the cumulative `%prep` run agree at
+  this base — derived, not asserted.** In `series` order the only
+  `0007-vesa-dsc-bpp.patch` hunk touching `drm_edid.c` *ahead of* the bigscreen
+  quirk is `@@ -45,6 +45,7 @@` — a net **+1** line at line 45; that carry's
+  next `drm_edid.c` hunk is way down at line 6566.
+  `bigscreen-beyond-edid.patch` targets lines **125** and **222** of the same
+  file, which sit strictly between those two points and share no context lines
+  with either, so applying `0007` first shifts bigscreen's targets by exactly
+  one line and disturbs nothing else: its pristine per-patch offsets of
+  **+24/+25** become exactly the **+25/+26** recorded above. The third carry,
+  `amdgpu-dsc-pps-debugfs.patch`, touches only `amdgpu_dm_debugfs.c`, which no
+  other carry in `series` touches at all. That arithmetic — not any property of
+  the checks themselves — is the entire reason a pristine-per-patch verdict and
+  a cumulative one coincide here. It is a fact about the current hunk layout and
+  must be re-derived whenever a carry is added, split, or moved.
+- **The "carries need a line-context refresh before a 7.1.x RPM builds" claim
+  is retired.** It was true before 2026-07-09, when
+  `amdgpu-dsc-pps-debugfs.patch` was still stamped against `7.0.x` context; PR
+  #85 regenerated it against `v7.1.3` and closed that half of `TIN-611`. The
+  claim survived only as prose in `base-anchor.yml` and in ticket summaries.
+  The advisory `rpm-carry-dryrun` job has in fact been **green** on `xr/main`
+  (run `33237032107`, 2026-08-29).
+- Security preflight at this base: `CVE-2026-31431`, `CVE-2026-43284`, and
+  `CVE-2026-43500` are all fixed natively at `7.1.12` — the `build-rpm.sh`
+  version gates return `fixed` and every `*_repo_backport_applies` helper
+  returns false, so **none** of the `xr/security/*` backports are applied on a
+  `7.1.x` base (see `xr/security/README.md`). Retiring those files is a
+  separate reviewed change and is **not** done here: the `6.18.x` / `6.12.x`
+  longterm fallbacks still select them.
 - Current published/downloadable lab release line: `v6.19.5-xr11` from
   `xr/main` commit `e25a1a77`, with generic RPMs, RT RPMs, and `SHA256SUMS`
   published on GitHub. It carries `CVE-2026-31431`, `CVE-2026-43284`, and both
   `CVE-2026-43500` RxRPC RXKAD/RXGK backports. This stays the last published
-  line until a `7.1.3` generic RPM proof is built and host-validated.
+  line until a `7.1.12` generic RPM proof is built and host-validated.
+- **Known remaining risk for a green `7.1.12` RPM (not a carry problem).**
+  `xr/config/base.config` is a scraped ElRepo **6.19.5** config (its own header
+  says `Linux/x86_64 6.19.5-1.el10.elrepo.x86_64`). `%prep` copies it to
+  `.config`, applies the XR overrides, runs `make olddefconfig` twice, and then
+  gates on `bash %{SOURCE2} .config` (`check-security-config.sh`). Kconfig
+  symbols renamed, removed, or newly dependency-gated between `6.19.y` and
+  `7.1.y` would surface there, not in the carries. That step has never been
+  exercised on a `7.1.x` tree. Likewise, the carries are proven to *apply* at
+  `7.1.12` but have never been *compiled* on a `7.1.x` base.
 - Current host boot-proven line: `v6.19.5-xr10` is boot-proven on `mbp-13` and
   `honey`. No `7.1.x` kernel is host boot-proven yet; promotion into any host
   rollout doc still requires the exact `*-xr.el10` kernel to boot and record
@@ -49,8 +121,10 @@ As of 2026-07-06:
   still fails the CVE-2026-31431 gate because the repo does not carry a 6.18.13
   backport.
 
-Do not merge `torvalds/linux:master` into an active lab release branch (mainline
-`7.2-rc2` is refused by the security gate as an `-rc` base). For the current lab
+Do not merge `torvalds/linux:master` into an active lab release branch. Mainline
+is `7.2` (released 2026-08-16, current stable head `v7.2.2`); any `-rc` base is
+refused outright by the security gate, and a just-cut `7.2.y` line is not a
+maintained candidate here. For the current lab
 line, source sync should target the selected maintained stable or longterm base.
 Use `v6.19.14` only as a bounded compatibility proof because kernel.org marks
 the `6.19.y` line EOL.
@@ -87,9 +161,12 @@ Required checks before moving build defaults or release tags:
 ./xr/scripts/build-rpm.sh --kernel-version 6.19.14 --xr-release 1 --security-preflight-only
 
 # Maintained candidate checks:
-# Primary re-home target (D3 amendment, TIN-2317):
+# Primary re-home target (D3 amendment, TIN-2317), pinned at the current
+# 7.1.y head as of 2026-08-29:
+./xr/scripts/check-kernel-carry.sh --kernel-version 7.1.12
+./xr/scripts/build-rpm.sh --kernel-version 7.1.12 --xr-release 1 --security-preflight-only
+# Prior 7.1.x pin (superseded 2026-08-29; kept for comparison):
 ./xr/scripts/check-kernel-carry.sh --kernel-version 7.1.3
-./xr/scripts/build-rpm.sh --kernel-version 7.1.3 --xr-release 1 --security-preflight-only
 # Prior 7.0.x candidate (superseded; kept for fallback comparison):
 ./xr/scripts/check-kernel-carry.sh --kernel-version 7.0.8
 ./xr/scripts/build-rpm.sh --kernel-version 7.0.8 --xr-release 1 --security-preflight-only

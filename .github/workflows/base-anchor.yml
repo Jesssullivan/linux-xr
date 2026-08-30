@@ -8,24 +8,51 @@ name: Base Anchor (maintained candidate)
 #   git-tree-anchor          (deliverable a) — AUTHORITATIVE zero-fuzz carry
 #                            proof: checks out the upstream stable tag
 #                            case-sensitive, verifies the Makefile triplet, and
-#                            applies every xr/patches carry with git apply
+#                            checks every xr/patches carry with git apply
 #                            --check (strict, no fuzz) against the real tree.
+#                            KNOWN LIMITATION — the SAME one documented in
+#                            xr/scripts/check-kernel-carry.sh: --check never
+#                            writes, so each carry is checked INDEPENDENTLY
+#                            against the pristine tag tree, not against the tree
+#                            as modified by earlier entries in series order.
+#                            This job is authoritative for "does each carry
+#                            apply zero-fuzz to the stock tag." It does NOT
+#                            model rpmbuild's cumulative %prep, and no job in
+#                            this file does.
 #   rpm-security-preflight   (deliverable c) — build-rpm.sh --security-preflight-only:
 #                            the version-based CVE floor gate at the candidate
 #                            base (no -rc, CVE floors satisfied). Self-contained;
 #                            exits before any tarball/carry staging.
 #   rpm-carry-dryrun         (advisory, non-blocking) — mirrors rpmbuild's
 #                            patch-based %prep (check-kernel-carry.sh). A failure
-#                            here means a carry needs a line-context refresh
-#                            before a 7.1.x RPM can build (carry-rebase lane
-#                            TIN-611 / NEW-1), which is PARKED out of this anchor
-#                            lane. git-tree-anchor above is authoritative for
-#                            "does the carry apply to the source."
+#                            here would mean a carry needs a line-context refresh
+#                            before a 7.1.x RPM can build. git-tree-anchor above
+#                            is authoritative for "does the carry apply to the
+#                            source."
+#
+#                            STATUS 2026-08-29 (TIN-611 / TIN-4065): this job is
+#                            GREEN and the carries need no refresh. The older
+#                            comment here asserted the opposite as a standing
+#                            fact; that was true only until 2026-07-09, when PR
+#                            #85 regenerated amdgpu-dsc-pps-debugfs.patch off
+#                            7.0.x context onto v7.1.3. All three carries now
+#                            apply with zero rejects and zero fuzz at v7.1.12,
+#                            cumulatively, in real %prep order — but that
+#                            CUMULATIVE result is a LOCAL REPRODUCTION recorded
+#                            in xr/source-sync.md, not a product of any job in
+#                            this file. Both jobs here are pristine-per-patch.
+#                            Do not re-derive
+#                            "the carries are broken" from this comment block.
+#                            What TIN-611 still owes is the 0007a/0007b/0007c
+#                            SPLIT of the combined DSC carry — a code-reduction
+#                            goal that does not block an RPM. See
+#                            xr/patches/0007-vesa-dsc-bpp.map.md.
 #
 # Context: executes the linux-xr 7.0.y -> 7.1.y re-home (D3 amendment, operator
 # ruling 2026-07-06, TIN-2317). Default candidate is the live 7.1.y stable head
-# v7.1.3 (re-verified live against kernel.org releases.json 2026-07-08 — still
-# the 7.1.y head, no v7.1.4; the 7.0.y line is EOL at v7.0.14). Override via the
+# v7.1.12 (released 2026-08-28; verified live against kernel.org releases.json
+# 2026-08-29, iseol: false). This advances the pin from v7.1.3, which was nine
+# point releases stale. The 7.0.y line is EOL at v7.0.14. Override via the
 # workflow_dispatch input when the maintained candidate moves.
 #
 # Runner: ubuntu-latest (GitHub-hosted) — the lightweight public-source anchor +
@@ -44,13 +71,15 @@ on:
       kernel_version:
         description: 'Maintained candidate kernel version (no leading v)'
         required: true
-        default: '7.1.3'
+        default: '7.1.12'
 
 permissions:
   contents: read
 
 env:
-  CANDIDATE_KVER: '7.1.3'
+  # Current 7.1.y stable head (2026-08-28). Advanced from 7.1.3 on 2026-08-29
+  # after re-verifying every carry at this base — see xr/source-sync.md.
+  CANDIDATE_KVER: '7.1.12'
 
 jobs:
   git-tree-anchor:
@@ -138,9 +167,14 @@ jobs:
     name: RPM carry dry-run (advisory — tracks TIN-611)
     runs-on: ubuntu-latest
     # Advisory only: git-tree-anchor (git apply --check) is authoritative for
-    # carry application. This job mirrors rpmbuild %prep (patch-based) and will
-    # go green when the carry-refresh (TIN-611 / NEW-1) lands. Non-blocking
-    # because carry-rebase onto 7.1.y is parked out of this anchor lane.
+    # carry application. This job mirrors rpmbuild %prep (patch-based) in its
+    # per-patch invocation, but NOT in ordering: like git-tree-anchor, it checks
+    # each carry against a pristine tree, so neither job in this file models
+    # cumulative %prep. The cumulative result lives in xr/source-sync.md.
+    # As of 2026-08-29 it is GREEN at the candidate base; it is kept
+    # non-blocking so an upstream point release that shifts context is reported
+    # rather than wedging the anchor lane. Lifting continue-on-error is a
+    # separate, deliberate gating decision.
     continue-on-error: true
     steps:
       - name: Resolve candidate version
@@ -163,7 +197,13 @@ jobs:
         run: |
           echo "Advisory: the authoritative zero-fuzz carry proof is the"
           echo "git-tree-anchor job (git apply --check). This mirrors rpmbuild"
-          echo "%prep (patch-based); a failure means a carry needs a line-context"
-          echo "refresh before a 7.1.x RPM can build — carry-rebase lane TIN-611"
-          echo "/ prompt-72 NEW-1, parked out of the F72 anchor lane."
+          echo "%prep (patch-based). Expected state as of 2026-08-29: PASS."
+          echo "A failure here means an upstream point release shifted context"
+          echo "and a carry needs a line-context refresh before an RPM builds."
+          echo "Note: this script dry-runs each carry independently against a"
+          echo "pristine tree, so it does not model cumulative %prep ordering."
+          echo "Neither does git-tree-anchor: git apply --check never writes,"
+          echo "so it too checks each carry against the pristine tag tree. The"
+          echo "cumulative %prep proof is the local reproduction recorded in"
+          echo "xr/source-sync.md, not any job in this workflow."
           bash xr/scripts/check-kernel-carry.sh --kernel-version "${{ steps.v.outputs.kver }}"

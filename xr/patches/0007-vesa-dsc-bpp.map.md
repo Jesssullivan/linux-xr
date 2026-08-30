@@ -44,7 +44,26 @@ Observed on 2026-05-09:
   for `6.12.87`, `6.18.28`, `6.19.14`, and `7.0.5` before this carry can gate
   a source-sync or fallback release.
 
+Observed on 2026-08-29 (`TIN-611` / `TIN-4065`):
+
+- This carry applies to the maintained candidate base **`v7.1.12`** with zero
+  rejects and zero fuzz, both via `git apply --check -p1` and via
+  `patch -p1 --fuzz=0` (rpm's `%patch` default), including a cumulative
+  replication of the real `%prep` ordering against a sha256-verified
+  `linux-7.1.12.tar.xz`. Every moved hunk moved by pure line offset
+  (`amdgpu_dm.c` +127; `drm_edid.c` +32 and +73; `drm_connector.h` +2);
+  `qp_tables.h`, `rc_calc_fpu.c`, `drm_displayid_internal.h`, and
+  `drm_modes.h` matched at their recorded lines. **No context refresh was
+  needed and none was made.** The compatibility list above predates the
+  `7.0.y` -> `7.1.y` re-home; `7.1.12` is now the primary proven base.
+
 ## Split Plan
+
+**Status: NOT STARTED as of 2026-08-29.** This is `TIN-611`'s actual acceptance
+criteria and it is a code-reduction / upstream-trackability goal. It does
+**not** block an RPM build — the combined carry applies cleanly at `v7.1.12`
+(see above). Do not conflate "the carries need a context refresh" (retired,
+false since 2026-07-09) with "the carry has not been split" (true, below).
 
 1. Split parser and DRM propagation into `0007a-vesa-displayid-dsc-bpp-parser.patch`.
 2. Split AMDGPU fixed-BPP use into `0007b-amdgpu-use-fixed-dsc-bpp.patch`.
